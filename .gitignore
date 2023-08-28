@@ -4,3 +4,5 @@
 .Ruserdata
 *.tar.bz2
 csv_example
+data
+converted_parquet

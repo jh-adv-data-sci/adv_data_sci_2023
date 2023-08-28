@@ -48,7 +48,7 @@ Useful String functions
 
 * `toupper()`, `tolower()` - uppercase or lowercase your data:
 * `str_trim()` (in the `stringr` package) or `trimws` in base 
-    - will trim whitespace on ends
+- will trim whitespace on ends
 * `stringr::str_squish` - trims and replaces double spaces
 * `nchar` - get the number of characters in a string
 
@@ -61,7 +61,7 @@ Like `dplyr`, the `stringr` package:
 * Is different than base R
 * Is used on forums for answers
 * Has a standard format for most functions
-    * the first argument is a string like first argument is a `data.frame` in `dplyr`
+* the first argument is a string like first argument is a `data.frame` in `dplyr`
 
 
 
@@ -70,9 +70,9 @@ Like `dplyr`, the `stringr` package:
 * R can do much more than find exact matches for a whole string
 * Like Perl and other languages, it can use regular expressions.
 * What are regular expressions?
-    * Ways to search for specific strings 
-    * Can be very complicated or simple
-    * Highly Useful - think "Find" on steroids
+* Ways to search for specific strings 
+* Can be very complicated or simple
+* Highly Useful - think "Find" on steroids
 
 
 ## A bit on Regular Expressions
@@ -138,7 +138,7 @@ suppressPackageStartupMessages(library(dplyr)) # must be loaded AFTER plyr
 y[[2]]
 sapply(y, dplyr::first) # on the fly
 purrr::map_chr(y, nth, 2) # on the fly
-sapply(y, dplylast) # on the fly
+sapply(y, dplyr::last) # on the fly
 ```
 
 
@@ -149,7 +149,7 @@ sapply(y, dplylast) # on the fly
 
 * `str_detect` - returns `TRUE` if `pattern` is found
 * `str_subset` - returns only the strings which pattern were detected
-    * convenient wrapper around `x[str_detect(x, pattern)]`
+* convenient wrapper around `x[str_detect(x, pattern)]`
 * `str_extract` - returns only strings which pattern were detected, but ONLY the pattern
 * `str_replace` - replaces `pattern` with `replacement` the first time
 * `str_replace_all` - replaces `pattern` with `replacement` as many times matched
@@ -164,6 +164,13 @@ sapply(y, dplylast) # on the fly
 
 
 
+
+## Read in Salary Data
+```{r}
+Sal = readr::read_csv(
+  "http://www.aejaffe.com/winterR_2016/data/Baltimore_City_Employee_Salaries_FY2014.csv")
+head(Sal)
+```
 
 ## 'Find' functions: finding values, `stringr` and `dplyr` 
 
@@ -200,7 +207,7 @@ head(str_extract_all(Sal$AgencyID, "\\d"), 2)
 - `sort` - reorders the data - characters work, but not 
 - `rank` - gives the rank of the data - ties are split
 - `order` - gives the indices, if subset, would give the data sorted
-    - `x[order(x)]` is the same as sorting
+- `x[order(x)]` is the same as sorting
 
 ```{r orderrank}
 sort(c("1", "2", "10")) #  not sort correctly (order simply ranks the data)
@@ -299,9 +306,9 @@ head(str_extract_all(Sal$AgencyID, "\\d"), 2)
 
 ## Using Regular Expressions
 * Look for any name that starts with:
-    * Payne at the beginning, 
-    * Leonard and then an S
-    * Spence then capital C
+* Payne at the beginning, 
+* Leonard and then an S
+* Spence then capital C
 
 ```{r grepstar}
 head(grep("^Payne.*", x = Sal$Name, value = TRUE), 3)
@@ -355,7 +362,7 @@ Now we can replace the `$` with nothing (used `fixed=TRUE` because `$` means end
 
 ```{r orderSal}
 Sal$AnnualSalary <- as.numeric(gsub(pattern = "$", replacement="", 
-                              Sal$AnnualSalary, fixed=TRUE))
+                                    Sal$AnnualSalary, fixed=TRUE))
 Sal <- Sal[order(Sal$AnnualSalary, decreasing=TRUE), ] 
 Sal[1:5, c("Name", "AnnualSalary", "JobTitle")]
 ```
