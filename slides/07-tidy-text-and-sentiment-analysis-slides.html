@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Tidy text and sentiment analysis</title>
+    <meta charset="utf-8">
+    <meta name="author" content="www.jtleek.com/advdatasci" />
+    <link href="libs/remark-css/example.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../additional.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Tidy text and sentiment analysis
+## JHU Data Science
+### www.jtleek.com/advdatasci
+
+---
+
+class: inverse, middle, center
+
+
+
+
+# Working with text
+
+---
+class: inverse
+
+## Find the BCM centers
+
+```r
+library(readxl);
+kg = read_excel("1000genomes.xlsx",sheet=4,skip=1)
+table(kg$Center)
+```
+
+```
+
+           BCM        BCM,BGI         BCM,BI         BCM,SC      BCM,WUGSC 
+           159              1              8              6              3 
+           BGI             BI       BI,MPIMG       Illumina       ILLUMINA 
+           626            578              1              1            104 
+ILLUMINA,WUGSC          MPIMG             SC          WUGSC 
+             2             95            739            365 
+```
+
+```r
+head(grep("BCM", kg$Center))
+```
+
+```
+[1]  2  4  9 33 34 35
+```
+
+```r
+head(grepl("BCM", kg$Center))
+```
+
+```
+[1] FALSE  TRUE FALSE  TRUE FALSE FALSE
+```
+
+---
+class: inverse
+
+## The same with stringr
+
+
+```r
+library(stringr)
+str_detect(kg$Center,"BCM")[1:10]
+```
+
+```
+ [1] FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE
+```
+
+```r
+str_subset(kg$Center, "BCM")[1:5]
+```
+
+```
+[1] "BCM" "BCM" "BCM" "BCM" "BCM"
+```
+
+```r
+# vignette("stringr")
+```
+
+---
+background-image: url(../imgs/tidytext/blast.png)
+background-size: 80% 
+background-position: center
+
+# Literals: nuclear
+
+---
+class: inverse
+
+## But text is more complicated
+
+.huge[
+
+We need a way to express
+
+- whitespace/word boundaries
+- sets of literals
+- the beginning and end of a line
+- alternatives ("war" or "peace") 
+
+]
+
+---
+class: inverse
+
+## Beginning of line with ^
+
+
+```r
+x = c("i think we all rule for participating",
+"i think i have been outed",
+"i think this will be quite fun actually",
+"it will be fun, i think")
+
+str_detect(x, "^i think")
+```
+
+```
+[1]  TRUE  TRUE  TRUE FALSE
+```
+
+---
+class: inverse
+
+## End of line with $
+
+
+
+```r
+x = c("well they had something this morning",
+"then had to catch a tram home in the morning",
+"dog obedience school in the morning",
+"this morning I'll go for a run")
+
+str_detect(x, "morning$")
+```
+
+```
+[1]  TRUE  TRUE  TRUE FALSE
+```
+
+---
+class: inverse
+
+## Character list with [ ]
+
+
+```r
+x = c('Name the worst thing about Bush!',
+'I saw a green bush',
+'BBQ and bushwalking at Molonglo Gorge',
+'BUSH!!')
+
+str_detect(x,"[Bb][Uu][Ss][Hh]")
+```
+
+```
+[1] TRUE TRUE TRUE TRUE
+```
+
+---
+class: inverse
+
+## Sets of letters and numbers
+
+
+```r
+x = c('7th inning stretch',
+'2nd half soon to begin. OSU did just win.',
+'3am - cant sleep - too hot still.. :(',
+'5ft 7 sent from heaven')
+
+str_detect(x,"^[0-9][a-zA-Z]")
+```
+
+```
+[1] TRUE TRUE TRUE TRUE
+```
+
+---
+class: inverse
+
+## Negative Classes
+
+
+```r
+x = c('are you there?',
+'2nd half soon to begin. OSU did just win.',
+'6 and 9',
+'dont worry... we all die anyway!')
+
+str_detect(x,"[^?.]$")
+```
+
+```
+[1] FALSE FALSE  TRUE  TRUE
+```
+
+---
+class: inverse
+
+## . means anything
+
+
+```r
+x = c('its stupid the post 9-11 rules',
+'NetBios: scanning ip 203.169.114.66',
+'Front Door 9:11:46 AM',
+'Sings: 0118999881999119725...3 !')
+
+str_detect(x,"9.11")
+```
+
+```
+[1] TRUE TRUE TRUE TRUE
+```
+
+---
+class: inverse
+
+## | means or
+
+
+```r
+x = c('Not a whole lot of hurricanes.',
+'We do have floods nearly every day', 
+'hurricanes swirl in the other direction',
+'coldfire is STRAIGHT!')
+
+str_detect(x,"flood|earthquake|hurricane|coldfire")
+```
+
+```
+[1] TRUE TRUE TRUE TRUE
+```
+
+---
+class: inverse
+
+## Detecting phone numbers
+
+
+```r
+x = c('206-555-1122','206-332','4545','test')
+
+phone = "([2-9][0-9]{2})[- .]([0-9]{3})[- .]([0-9]{4})"
+
+str_detect(x,phone)
+```
+
+```
+[1]  TRUE FALSE FALSE FALSE
+```
+
+---
+background-image: url(../imgs/tidytext/ridic.png)
+background-size: 80% 
+background-position: center
+
+# Can this get ridiculous? You bet! 
+---
+background-image: url(../imgs/tidytext/xkcd.png)
+background-size: 80% 
+background-position: center
+
+# Like really ridiculous
+
+
+
+
+---
+background-image: url(../imgs/tidytext/regex_tutorial.png)
+background-size: 70% 
+background-position: center
+
+# A nice tutorial
+
+.footnote[http://stat545-ubc.github.io/block022_regular-expression.html]
+
+---
+class: inverse, middle, center
+
+# Regex lab
+
+&lt;font color="red"  style='font-size:40pt'&gt;
+https://goo.gl/ubhuZK
+&lt;/font&gt;
+
+
+
+
+---
+class: inverse, middle, center
+
+
+# What are the (text) data we see?
+
+---
+background-image: url(../imgs/tidytext/trump.png)
+background-size: 60% 
+background-position: bottom
+
+# This is data
+
+---
+background-image: url(../imgs/tidytext/janeaustin.png)
+background-size: 80% 
+background-position: bottom
+
+# This too
+
+
+---
+background-image: url(../imgs/tidytext/tidytext.png)
+background-size: 80% 
+background-position: center
+
+.footnote[http://joss.theoj.org/papers/89fd1099620268fe0342ffdcdf66776f]
+
+---
+class: inverse
+
+## Look at some text
+
+
+```r
+suppressPackageStartupMessages({library(dplyr)})
+library(tidytext)
+txt = c("These are words", "so are these", "this is running on")
+sentence = c(1, 2, 3)
+dat = tibble(txt, sentence)
+unnest_tokens(dat,tok,txt)
+```
+
+```
+# A tibble: 10 x 2
+   sentence     tok
+      &lt;dbl&gt;   &lt;chr&gt;
+ 1        1   these
+ 2        1     are
+ 3        1   words
+ 4        2      so
+ 5        2     are
+ 6        2   these
+ 7        3    this
+ 8        3      is
+ 9        3 running
+10        3      on
+```
+
+---
+class: inverse
+
+## What is tokenization? 
+
+&lt;div style='font-size:30pt'&gt;
+
+&gt; "The process of segmenting running text into words and sentences."
+
+- Split on white space/punctuation
+- Make lower case 
+- Keep contractions together
+- Maybe put quoted words together (not in unnest_tokens)
+
+&lt;/p&gt;
+
+---
+class: inverse
+
+## One line per row
+
+
+```r
+library(janeaustenr)
+original_books &lt;- austen_books() %&gt;%
+  group_by(book) %&gt;%
+  mutate(linenumber = row_number()) %&gt;%
+  ungroup()
+head(original_books)
+```
+
+```
+# A tibble: 6 x 3
+                   text                book linenumber
+                  &lt;chr&gt;              &lt;fctr&gt;      &lt;int&gt;
+1 SENSE AND SENSIBILITY Sense &amp; Sensibility          1
+2                       Sense &amp; Sensibility          2
+3        by Jane Austen Sense &amp; Sensibility          3
+4                       Sense &amp; Sensibility          4
+5                (1811) Sense &amp; Sensibility          5
+6                       Sense &amp; Sensibility          6
+```
+
+---
+class: inverse
+
+## One token per row
+
+
+```r
+tidy_books &lt;- original_books %&gt;% unnest_tokens(word, text)
+head(tidy_books)
+```
+
+```
+# A tibble: 6 x 3
+                 book linenumber        word
+               &lt;fctr&gt;      &lt;int&gt;       &lt;chr&gt;
+1 Sense &amp; Sensibility          1       sense
+2 Sense &amp; Sensibility          1         and
+3 Sense &amp; Sensibility          1 sensibility
+4 Sense &amp; Sensibility          3          by
+5 Sense &amp; Sensibility          3        jane
+6 Sense &amp; Sensibility          3      austen
+```
+
+
+---
+class: inverse
+background-image: url(../imgs/tidytext/wordcloud.png)
+background-size: 80% 
+background-position: center
+
+# Stop words/words to filter
+
+.footnote[http://xpo6.com/list-of-english-stop-words/]
+
+---
+class: inverse
+
+## Stop words/words to filter
+
+
+```r
+tidy_books %&gt;% 
+  group_by(word) %&gt;% 
+  tally() %&gt;% 
+  arrange(desc(n))
+```
+
+```
+# A tibble: 14,520 x 2
+    word     n
+   &lt;chr&gt; &lt;int&gt;
+ 1   the 26351
+ 2    to 24044
+ 3   and 22515
+ 4    of 21178
+ 5     a 13408
+ 6   her 13055
+ 7     i 12006
+ 8    in 11217
+ 9   was 11204
+10    it 10234
+# ... with 14,510 more rows
+```
+
+
+---
+class: inverse
+
+## Stemming
+
+
+```r
+library(SnowballC)
+wordStem(c("running","fasted"))
+```
+
+```
+[1] "run"  "fast"
+```
+
+---
+class: inverse
+
+## Filtering with joins
+
+
+```r
+head(stop_words)
+```
+
+```
+# A tibble: 6 x 2
+       word lexicon
+      &lt;chr&gt;   &lt;chr&gt;
+1         a   SMART
+2       a's   SMART
+3      able   SMART
+4     about   SMART
+5     above   SMART
+6 according   SMART
+```
+
+```r
+tidy_books = tidy_books %&gt;% anti_join(stop_words, by = "word")
+head(tidy_books)
+```
+
+```
+# A tibble: 6 x 3
+                 book linenumber        word
+               &lt;fctr&gt;      &lt;int&gt;       &lt;chr&gt;
+1 Sense &amp; Sensibility          1       sense
+2 Sense &amp; Sensibility          1 sensibility
+3 Sense &amp; Sensibility          3        jane
+4 Sense &amp; Sensibility          3      austen
+5 Sense &amp; Sensibility          5        1811
+6 Sense &amp; Sensibility         10     chapter
+```
+
+---
+class: inverse
+
+## Example classification
+
+
+.pull-left[
+![](../imgs/tidytext/janeaustin.png)
+]
+&lt;p style="  display: inline-block; font-size: 20pt; padding: 15% 0;"&gt; vs. &lt;/p&gt;
+.pull-right[
+![](../imgs/tidytext/ap.png)
+]
+
+
+---
+class: inverse
+
+## Example classification
+
+
+```r
+library(tm); 
+```
+
+```
+Loading required package: NLP
+```
+
+```r
+data("AssociatedPress", package = "topicmodels")
+AssociatedPress
+```
+
+```
+&lt;&lt;DocumentTermMatrix (documents: 2246, terms: 10473)&gt;&gt;
+Non-/sparse entries: 302031/23220327
+Sparsity           : 99%
+Maximal term length: 18
+Weighting          : term frequency (tf)
+```
+
+```r
+class(AssociatedPress)
+```
+
+```
+[1] "DocumentTermMatrix"    "simple_triplet_matrix"
+```
+
+---
+class: inverse
+
+## Compare frequencies
+
+
+```r
+comparison &lt;- tidy(AssociatedPress) %&gt;%
+    count(word = term) %&gt;%
+    rename(AP = n) %&gt;%
+    inner_join(count(tidy_books, word)) %&gt;%
+    rename(Austen = n) %&gt;%
+    mutate(AP = AP / sum(AP),
+           Austen = Austen / sum(Austen),
+           diff=AP - Austen) %&gt;% 
+  arrange(diff)
+```
+
+```
+Joining, by = "word"
+```
+
+```r
+head(comparison)
+```
+
+```
+# A tibble: 6 x 4
+       word           AP      Austen         diff
+      &lt;chr&gt;        &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;
+1      lady 0.0001019001 0.005795765 -0.005693865
+2      time 0.0038242522 0.009484624 -0.005660372
+3       sir 0.0001198825 0.005717731 -0.005597849
+4    sister 0.0002157885 0.005157309 -0.004941520
+5 elizabeth 0.0001618414 0.004873550 -0.004711709
+6    friend 0.0002877180 0.004206718 -0.003919000
+```
+
+
+
+---
+class: inverse
+
+## Bag of words
+
+
+```r
+tidy_freq = tidy_books %&gt;% 
+  group_by(book, word) %&gt;%
+  summarize(count=n()) %&gt;% 
+  ungroup()
+head(tidy_freq)
+```
+
+```
+# A tibble: 6 x 3
+                 book  word count
+               &lt;fctr&gt; &lt;chr&gt; &lt;int&gt;
+1 Sense &amp; Sensibility     1     2
+2 Sense &amp; Sensibility    10     1
+3 Sense &amp; Sensibility    11     1
+4 Sense &amp; Sensibility    12     1
+5 Sense &amp; Sensibility    13     1
+6 Sense &amp; Sensibility    14     1
+```
+
+---
+class: inverse
+
+## Bag of words
+
+
+```r
+nonum = tidy_freq %&gt;% 
+  filter(is.na(as.numeric(word)))
+```
+
+```
+Warning in evalq(is.na(as.numeric(word)), &lt;environment&gt;): NAs introduced by
+coercion
+```
+
+```r
+head(nonum)
+```
+
+```
+# A tibble: 6 x 3
+                 book      word count
+               &lt;fctr&gt;     &lt;chr&gt; &lt;int&gt;
+1 Sense &amp; Sensibility     7000l     1
+2 Sense &amp; Sensibility abandoned     1
+3 Sense &amp; Sensibility abatement     1
+4 Sense &amp; Sensibility abbeyland     1
+5 Sense &amp; Sensibility     abhor     1
+6 Sense &amp; Sensibility  abhorred     2
+```
+
+---
+class: inverse
+
+## Combine "bags"
+
+```r
+tidy_ap = tidy(AssociatedPress) %&gt;% 
+  rename(book = document, 
+         word = term, 
+         count = count)
+dat = rbind(tidy_ap, tidy_freq) 
+head(dat)
+```
+
+```
+# A tibble: 6 x 3
+   book      word count
+  &lt;chr&gt;     &lt;chr&gt; &lt;dbl&gt;
+1     1    adding     1
+2     1     adult     2
+3     1       ago     1
+4     1   alcohol     1
+5     1 allegedly     1
+6     1     allen     1
+```
+
+
+---
+class: inverse
+
+## Term-document matrices
+
+
+```r
+dtm = dat %&gt;% cast_dtm(book,word, count)
+inspect(dtm[1:6,1:10])
+```
+
+```
+&lt;&lt;DocumentTermMatrix (documents: 6, terms: 10)&gt;&gt;
+Non-/sparse entries: 15/45
+Sparsity           : 75%
+Maximal term length: 10
+Weighting          : term frequency (tf)
+Sample             :
+    Terms
+Docs adding adult ago alcohol allegedly allen apparently appeared arrested
+   1      1     2   1       1         1     1          2        1        1
+   2      0     0   0       0         0     0          0        1        0
+   3      0     0   1       0         0     0          0        1        0
+   4      0     0   3       0         0     0          0        0        0
+   5      0     0   0       0         0     0          0        0        0
+   6      0     0   2       0         0     0          0        0        0
+    Terms
+Docs assault
+   1       1
+   2       0
+   3       0
+   4       0
+   5       0
+   6       0
+```
+
+```r
+dtm = as.matrix(dtm)
+dtm = dtm/rowSums(dtm)
+```
+
+
+---
+class: inverse
+
+## Classify
+
+
+```r
+cor1 = cor(dtm[1,], t(dtm))[1,]; print(cor1[1:5]); plot(cor1)
+```
+
+```
+         1          2          3          4          5 
+1.00000000 0.01817799 0.18085240 0.04745425 0.03157564 
+```
+
+![](07-tidy-text-and-sentiment-analysis-slides_files/figure-html/unnamed-chunk-23-1.png)&lt;!-- --&gt;
+
+---
+class: inverse
+
+## Classify
+
+
+```r
+which.max(cor1[-1])
+```
+
+```
+276 
+275 
+```
+
+```r
+cor_ss = cor(dtm[2252,],t(dtm))[1,]
+which.max(cor_ss[-2252])
+```
+
+```
+Pride &amp; Prejudice 
+             2248 
+```
+
+---
+class: inverse, center, middle
+
+# Sentiment analysis
+
+&lt;font  style='font-size:40pt'&gt;
+"I hate this stupid class. But I love the instructor"
+&lt;/font&gt;
+
+
+---
+class: inverse, center, middle
+
+# Sentiment analysis
+
+&lt;font  style='font-size:40pt'&gt;
+"I &lt;font color="red"&gt;hate&lt;/font&gt; this &lt;font color="red"&gt;stupid&lt;/font&gt; class. But I &lt;font color="blue"&gt;love&lt;/font&gt; the instructor"
+&lt;/font&gt;
+
+
+---
+class: inverse, center, middle
+
+# Sentiment analysis
+
+&lt;font  style='font-size:40pt'&gt;
+"I &lt;font color="red"&gt;hate&lt;/font&gt; this &lt;font color="red"&gt;stupid&lt;/font&gt; class. But I &lt;font color="blue"&gt;love&lt;/font&gt; the instructor"
+&lt;br&gt;
+"Oh yeah, I totally &lt;font color="blue"&gt;love&lt;/font&gt; doing DataCamp sessions"
+&lt;/font&gt;
+
+
+
+
+
+---
+class: inverse
+
+## Sentiments
+
+
+```r
+library(tidyr)
+bing &lt;- sentiments %&gt;%
+  filter(lexicon == "bing") %&gt;%
+  select(-score)
+head(bing)
+```
+
+```
+# A tibble: 6 x 3
+        word sentiment lexicon
+       &lt;chr&gt;     &lt;chr&gt;   &lt;chr&gt;
+1    2-faced  negative    bing
+2    2-faces  negative    bing
+3         a+  positive    bing
+4   abnormal  negative    bing
+5    abolish  negative    bing
+6 abominable  negative    bing
+```
+
+---
+class: inverse
+
+## Assigning sentiments to words
+
+
+```r
+janeaustensentiment &lt;- tidy_books %&gt;%
+  inner_join(bing) %&gt;% 
+  count(book, index = linenumber %/% 80, sentiment) %&gt;% 
+  spread(sentiment, n, fill = 0) %&gt;% 
+  mutate(sentiment = positive - negative)
+```
+
+```
+Joining, by = "word"
+```
+
+```r
+head(janeaustensentiment)
+```
+
+```
+# A tibble: 6 x 5
+                 book index negative positive sentiment
+               &lt;fctr&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 Sense &amp; Sensibility     0       16       26        10
+2 Sense &amp; Sensibility     1       19       44        25
+3 Sense &amp; Sensibility     2       12       23        11
+4 Sense &amp; Sensibility     3       15       22         7
+5 Sense &amp; Sensibility     4       16       29        13
+6 Sense &amp; Sensibility     5       16       39        23
+```
+
+---
+class: inverse
+
+## Plotting the sentiment trajectory
+
+
+```r
+suppressPackageStartupMessages({library(ggplot2)})
+ggplot(janeaustensentiment, aes(index, sentiment, fill = book)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  facet_wrap(~book, ncol = 3, scales = "free_x")
+```
+
+![](07-tidy-text-and-sentiment-analysis-slides_files/figure-html/unnamed-chunk-27-1.png)&lt;!-- --&gt;
+
+---
+class: inverse, middle, center
+
+# Tidy text lab
+
+&lt;font color="red"  style='font-size:40pt'&gt;
+https://goo.gl/BaiBS1
+&lt;/font&gt;
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {window.dispatchEvent(new Event('resize'));});
+(function() {var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler"); if (!r) return; s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }"; d.head.appendChild(s);})();</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+  }
+});
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
