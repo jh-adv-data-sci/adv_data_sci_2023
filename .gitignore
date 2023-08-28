@@ -6,3 +6,4 @@
 csv_example
 data
 converted_parquet
+slides/*_cache
