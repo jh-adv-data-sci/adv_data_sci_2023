@@ -15,6 +15,7 @@ opts_chunk$set(comment = "", cache = TRUE)
 library(readr)
 library(stringr)
 library(tidyr)
+library(emo) # hadley/emo
 source("../slide_functions.R")
 suppressPackageStartupMessages(library(dplyr))
 ```
@@ -23,7 +24,7 @@ suppressPackageStartupMessages(library(dplyr))
 
 In general, data cleaning is a process of investigating your data for inaccuracies, or recoding it in a way that makes it more manageable.
 
-MOST IMPORTANT RULE - LOOK AT YOUR DATA!
+`r emo::ji("warning")` MOST IMPORTANT RULE - LOOK `r emo::ji("eyes")` AT YOUR DATA! `r emo::ji("warning")`
 
 # String functions
 
@@ -46,6 +47,26 @@ paste(1:5)
 paste(1:5, collapse = " ")
 ```
 
+## Useful String Functions
+
+Useful String functions
+
+* `toupper()`, `tolower()` - uppercase or lowercase your data:
+* `str_trim()` (in the `stringr` package) or `trimws` in base 
+- will trim whitespace on ends
+* `stringr::str_squish` - trims and replaces double spaces
+* `nchar` - get the number of characters in a string
+
+
+## The `stringr` package
+
+Like `dplyr`, the `stringr` package:
+
+* Makes some things more intuitive
+* Is different than base R
+* Is used on forums for answers
+* Has a standard format for most functions
+* the first argument is a string like first argument is a `data.frame` in `dplyr`
 
 
 ## 'Find' functions: `stringr`
@@ -66,6 +87,8 @@ paste(1:5, collapse = " ")
 * `fixed` - match everything exactly
 * `regexp` - default - uses **reg**ular **exp**ressions
 * `ignore_case` is an option to not have to use `tolower`
+* `boundary` - Match boundaries between things (e.g. words, sentences, characters).
+
 
 
 ## Substringing
@@ -110,28 +133,18 @@ purrr::map_chr(y, nth, 2) # on the fly
 sapply(y, dplyr::last) # on the fly
 ```
 
+## Boundary
 
-## Useful String Functions
+We can use `boundary` in the case of `str_split` as well:
 
-Useful String functions
-
-* `toupper()`, `tolower()` - uppercase or lowercase your data:
-* `str_trim()` (in the `stringr` package) or `trimws` in base 
-   - will trim whitespace on ends
-* `stringr::str_squish` - trims and replaces double spaces
-* `nchar` - get the number of characters in a string
-
-
-## The `stringr` package
-
-Like `dplyr`, the `stringr` package:
-
-* Makes some things more intuitive
-* Is different than base R
-* Is used on forums for answers
-* Has a standard format for most functions
-* the first argument is a string like first argument is a `data.frame` in `dplyr`
-
+```{r}
+words <- c("These are   some words.")
+str_count(words, boundary("word"))
+# split with space
+str_split(words, " ")[[1]]
+# split between word
+str_split(words, boundary("word"))[[1]]
+```
 
 
 ## Splitting/Find/Replace and Regular Expressions
@@ -158,9 +171,9 @@ Like `dplyr`, the `stringr` package:
 
 ```{r}
 x = c("i think we all rule for participating",
-"i think i have been outed",
-"i think this will be quite fun actually",
-"it will be fun, i think")
+      "i think i have been outed",
+      "i think this will be quite fun actually",
+      "it will be fun, i think")
 
 str_detect(x, "^i think")
 ```
@@ -171,9 +184,9 @@ str_detect(x, "^i think")
 
 ```{r}
 x = c("well they had something this morning",
-"then had to catch a tram home in the morning",
-"dog obedience school in the morning",
-"this morning I'll go for a run")
+      "then had to catch a tram home in the morning",
+      "dog obedience school in the morning",
+      "this morning I'll go for a run")
 
 str_detect(x, "morning$")
 ```
@@ -182,10 +195,10 @@ str_detect(x, "morning$")
 ## Character list with [ ]
 
 ```{r}
-x = c('Name the worst thing about Bush!',
-'I saw a green bush',
-'BBQ and bushwalking at Molonglo Gorge',
-'BUSH!!')
+x = c("Name the worst thing about Bush!",
+      "I saw a green bush",
+      "BBQ and bushwalking at Molonglo Gorge",
+      "BUSH!!")
 
 str_detect(x,"[Bb][Uu][Ss][Hh]")
 ```
@@ -194,10 +207,10 @@ str_detect(x,"[Bb][Uu][Ss][Hh]")
 ## Sets of letters and numbers
 
 ```{r}
-x = c('7th inning stretch',
-'2nd half soon to begin. OSU did just win.',
-'3am - cant sleep - too hot still.. :(',
-'5ft 7 sent from heaven')
+x = c("7th inning stretch",
+      "2nd half soon to begin. OSU did just win.",
+      "3am - cant sleep - too hot still.. :(",
+      "5ft 7 sent from heaven")
 
 str_detect(x,"^[0-9][a-zA-Z]")
 ```
@@ -206,10 +219,10 @@ str_detect(x,"^[0-9][a-zA-Z]")
 
 I want to match NOT a `?` or `.` at the end of line (fixed with `[ ]`).
 ```{r}
-x = c('are you there?',
-'2nd half soon to begin. OSU did just win.',
-'6 and 9',
-'dont worry... we all die anyway!')
+x = c("are you there?",
+      "2nd half soon to begin. OSU did just win.",
+      "6 and 9",
+      "dont worry... we all die anyway!")
 
 str_detect(x,"[^?.]$")
 ```
@@ -218,22 +231,22 @@ str_detect(x,"[^?.]$")
 ## . means anything
 
 ```{r}
-x = c('its stupid the post 9-11 rules',
-'NetBios: scanning ip 203.169.114.66',
-'Front Door 9:11:46 AM',
-'Sings: 0118999881999119725...3 !')
+x = c("these are post 9-11 rules",
+      "NetBios: scanning ip 203.169.114.66",
+      "Front Door 9:11:46 AM",
+      "Sings: 0118999881999119725...3 !")
 
-str_detect(x,"9.11")
+str_detect(x, "9.11")
 ```
 
 
 ## | means or
 
 ```{r}
-x = c('Not a whole lot of hurricanes.',
-'We do have floods nearly every day', 
-'hurricanes swirl in the other direction',
-'coldfire is STRAIGHT!')
+x = c("Not a whole lot of hurricanes.",
+      "We do have floods nearly every day", 
+      "hurricanes swirl in the other direction",
+      "coldfire is STRAIGHT!")
 
 str_detect(x,"flood|earthquake|hurricane|coldfire")
 ```
@@ -242,7 +255,7 @@ str_detect(x,"flood|earthquake|hurricane|coldfire")
 ## Detecting phone numbers
 
 ```{r}
-x = c('206-555-1122','206-332','4545','test')
+x = c("206-555-1122","206-332","4545","test")
 
 phone = "([2-9][0-9]{2})[- .]([0-9]{3})[- .]([0-9]{4})"
 
@@ -255,9 +268,9 @@ str_detect(x,phone)
 ```{r}
 suppressMessages({
   Sal = readr::read_csv(
-  "https://raw.githubusercontent.com/muschellij2/adv_data_sci_2023/main/example_data/Baltimore_City_Employee_Salaries_FY2014.csv", 
-  progress = FALSE)
-  })
+    "https://raw.githubusercontent.com/muschellij2/adv_data_sci_2023/main/example_data/Baltimore_City_Employee_Salaries_FY2014.csv", 
+    progress = FALSE)
+})
 raw_salary_data = Sal
 head(Sal)
 ```
@@ -461,11 +474,11 @@ all.equal(check_Sal, dplyr_sal)
 
 `readr::parse_*` is a number of useful helper functions for parsing columns
 
-```{r}
+```{r parse_number}
 head(readr::parse_number(raw_salary_data$AnnualSalary))
 raw_salary_data %>% 
   mutate(across(matches("Salary|Pay"), readr::parse_number)) %>% 
-  head()
+  select(matches("Salary|Pay"))
 ```
 
 
@@ -551,12 +564,8 @@ head(tidy_books)
 
 ## Stop words/words to filter
 
-```{r wordcloud, eval = FALSE, results='asis', echo = FALSE}
-bg_slide("wordcloud", 
-  folder = folder,
-  size = "80%",
-  titles = "Stop words/words to filter",
-  add_opts = "class: inverse")
+```{r wordcloud, out.width="70%", echo = FALSE}
+knitr::include_graphics("../imgs/tidytext/wordcloud.png")
 ```
 
 http://xpo6.com/list-of-english-stop-words/
@@ -572,6 +581,8 @@ tidy_books %>%
 
 
 ## Stemming
+
+Can use `wordStem` to reduce certain words to their primary stem (e.g. remove gerunds/tense):
 
 ```{r}
 library(SnowballC)
@@ -592,25 +603,24 @@ head(tidy_books)
 
 ## Example classification
 
-```{r}
+```{r AP}
 library(tm); 
 data("AssociatedPress", package = "topicmodels")
 AssociatedPress
 class(AssociatedPress)
+head(tidy(AssociatedPress)) # generics::tidy
 ```
 
 
-## Compare frequencies
+## Compare frequencies: Jane Austin vs. the AP
 
 ```{r}
 comparison <- tidy(AssociatedPress) %>%
-    count(word = term) %>%
-    rename(AP = n) %>%
-    inner_join(count(tidy_books, word)) %>%
-    rename(Austen = n) %>%
-    mutate(AP = AP / sum(AP),
-           Austen = Austen / sum(Austen),
-           diff=AP - Austen) %>% 
+  count(word = term, name = "AP") %>%
+  inner_join(count(tidy_books, word, name = "Austen")) %>%
+  mutate(AP = AP / sum(AP),
+         Austen = Austen / sum(Austen),
+         diff = AP - Austen) %>% 
   arrange(diff)
 head(comparison)
 ```
@@ -621,13 +631,14 @@ head(comparison)
 
 ```{r}
 tidy_freq = tidy_books %>% 
-  group_by(book, word) %>%
-  summarize(count=n()) %>% 
-  ungroup()
+  dplyr::ungroup() %>% 
+  count(book, word, name = "count")
 head(tidy_freq)
 ```
 
 ## Bag of words
+
+`nonum` removes any words that are all numeric (many ways of doing this):
 
 ```{r}
 nonum = tidy_freq %>% 
@@ -637,6 +648,7 @@ head(nonum)
 
 
 ## Combine "bags"
+
 ```{r}
 tidy_ap = tidy(AssociatedPress) %>% 
   rename(book = document, 
@@ -649,8 +661,10 @@ head(dat)
 
 ## Term-document matrices
 
+Make a `DocuemntTermMatrix`/reshape the data:
+
 ```{r}
-dtm = dat %>% cast_dtm(book,word, count)
+dtm = dat %>% cast_dtm(document = book, term = word, value = count)
 inspect(dtm[1:6,1:10])
 dtm = as.matrix(dtm)
 dtm = dtm/rowSums(dtm)
@@ -658,17 +672,35 @@ dtm = dtm/rowSums(dtm)
 
 ## Classify
 
+Show the similarity (based on count correlations with first document):
 ```{r, fig.width = 8, fig.height = 5}
-cor1 = cor(dtm[1,], t(dtm))[1,]; print(cor1[1:5]); plot(cor1)
+cor1 = cor(dtm[1,], t(dtm))[1,]; print(cor1[1:5]);
+```
+
+```{r, fig.width = 8, fig.height = 5, echo = FALSE}
+plot(cor1)
+```
+
+## Classify
+
+We see that there is a large clustering of Austen compared to AP:
+```{r Sense_Sensibility, fig.width = 8, fig.height = 5}
+cor_ss = cor(dtm["Sense & Sensibility",], t(dtm))[1,]; print(cor_ss[1:5]); 
+```
+
+```{r Sense_Sensibility_plot, fig.width = 8, fig.height = 5, echo = FALSE}
+plot(cor_ss)
 ```
 
 
 ## Classify
 
+The max similarity is not symmetrical (closest document/book to document 1 does not have document 1 as its closest document/book):
+
 ```{r}
-which.max(cor1[-1])
-cor_ss = cor(dtm[2252,],t(dtm))[1,]
-which.max(cor_ss[-2252])
+(index <- which.max(cor1[-1]))
+cor_ss = cor(dtm[index,],t(dtm))[1,]
+which.max(cor_ss[-index]) # not 1!
 ```
 
 # Sentiment analysis
