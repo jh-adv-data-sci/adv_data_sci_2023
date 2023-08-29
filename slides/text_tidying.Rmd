@@ -16,6 +16,7 @@ library(readr)
 library(stringr)
 library(tidyr)
 library(emo) # hadley/emo
+library(ggplot2)
 source("../slide_functions.R")
 suppressPackageStartupMessages(library(dplyr))
 ```
@@ -758,11 +759,28 @@ head(janeaustensentiment)
 ```
 
 
-## Plotting the sentiment trajectory
+## Plotting the sentiment trajectory (ggplot2 loaded)
 
-```{r, fig.width = 12, fig.height = 6}
-suppressPackageStartupMessages({library(ggplot2)})
+```{r, fig.width = 10, fig.height = 5, out.width = "80%" }
 ggplot(janeaustensentiment, aes(index, sentiment, fill = book)) +
   geom_bar(stat = "identity", show.legend = FALSE) +
   facet_wrap(~book, ncol = 3, scales = "free_x")
+```
+
+
+## Plotting the cumulative sentiment 
+
+```{r cumsum, fig.width = 10, fig.height = 5, out.width = "80%" }
+ggplot(janeaustensentiment, aes(index, cumsum(sentiment), colour = book)) +
+  geom_line() + ylab("Cumulative Sentiment") + xlab("Pages(ish)")
+```
+
+## Plotting the cumulative sentiment (normalized book length)
+
+```{r cumsum_norm, fig.width = 10, fig.height = 5, out.width = "80%" }
+janeaustensentiment %>% 
+  group_by(book) %>% 
+  mutate(index = index/max(index)) %>% 
+  ggplot(aes(index, cumsum(sentiment), colour = book)) +
+  geom_line()  + ylab("Cumulative Sentiment") + xlab("Percent Pages")
 ```
