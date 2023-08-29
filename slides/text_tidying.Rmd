@@ -703,7 +703,7 @@ cor_ss = cor(dtm[index,],t(dtm))[1,]
 which.max(cor_ss[-index]) # not 1!
 ```
 
-# Sentiment analysis
+## Sentiment analysis
 
 <font  style='font-size:40pt'>
 "I hate this stupid class. But I love the instructor"
@@ -711,19 +711,19 @@ which.max(cor_ss[-index]) # not 1!
 
 
 
-# Sentiment analysis
+## Sentiment analysis
 
 <font  style='font-size:40pt'>
 "I <font color="red">hate</font> this <font color="red">stupid</font> class. But I <font color="blue">love</font> the instructor"
 </font>
 
 
-# Sentiment analysis
+## Sentiment analysis
 
 <font  style='font-size:40pt'>
 "I <font color="red">hate</font> this <font color="red">stupid</font> class. But I <font color="blue">love</font> the instructor"
 <br>
-"Oh yeah, I totally <font color="blue">love</font> doing DataCamp sessions"
+"Oh yeah, I totally <font color="blue">love</font> doing coding sessions"
 </font>
 
 
@@ -733,13 +733,24 @@ which.max(cor_ss[-index]) # not 1!
 ```{r bing}
 bing <- tidytext::sentiments
 head(bing)
+(dupes <- bing %>% janitor::get_dupes(word))
+```
+
+## Sentiments: A little Tidying
+
+Let's remove those cases that it says these duplicates were positive
+
+```{r}
+bing = bing %>% 
+  anti_join(dupes %>% filter(sentiment == "positive"))
+anyDuplicated(bing$word)
 ```
 
 ## Assigning sentiments to words
 
 ```{r ja_tidy}
 janeaustensentiment <- tidy_books %>%
-  inner_join(bing) %>% 
+  inner_join(bing, by = join_by(word)) %>% 
   count(book, index = linenumber %/% 80, sentiment) %>% 
   spread(sentiment, n, fill = 0) %>% 
   mutate(sentiment = positive - negative)
