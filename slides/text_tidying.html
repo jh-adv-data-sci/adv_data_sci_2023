@@ -3509,7 +3509,7 @@ str_detect(x, &quot;9.11&quot;)</pre>
 
 <pre >[1] TRUE TRUE TRUE TRUE</pre>
 
-</article></slide><slide class=""><hgroup><h2></h2><h3> means or</h3></hgroup><article  id="means-or">
+</article></slide><slide class=""><hgroup><h2><code></h2><h3></code> means or</h3></hgroup><article  id="means-or">
 
 <pre class = 'prettyprint lang-r'>x = c(&quot;Not a whole lot of hurricanes.&quot;,
       &quot;We do have floods nearly every day&quot;, 
@@ -3533,11 +3533,10 @@ str_detect(x,phone)</pre>
 </article></slide><slide class=""><hgroup><h2>Read in Salary Data</h2></hgroup><article  id="read-in-salary-data">
 
 <pre class = 'prettyprint lang-r'>suppressMessages({
-  Sal = readr::read_csv(
+  raw_salary_data = Sal = readr::read_csv(
     &quot;https://raw.githubusercontent.com/muschellij2/adv_data_sci_2023/main/example_data/Baltimore_City_Employee_Salaries_FY2014.csv&quot;, 
     progress = FALSE)
 })
-raw_salary_data = Sal
 head(Sal)</pre>
 
 <pre ># A tibble: 6 × 7
@@ -3571,8 +3570,7 @@ head(Sal)</pre>
 
 <p>We can do the same thing (with 2 piping operations!) in dplyr</p>
 
-<pre class = 'prettyprint lang-r'>dplyr_sal = Sal
-dplyr_sal = dplyr_sal %&gt;% mutate( 
+<pre class = 'prettyprint lang-r'>dplyr_sal = Sal %&gt;% mutate( 
   AnnualSalary = AnnualSalary %&gt;%
     str_replace(fixed(&quot;$&quot;), &quot;&quot;) %&gt;%
     as.numeric) %&gt;%
@@ -3733,16 +3731,16 @@ head(ss)</pre>
 
 </article></slide><slide class=""><hgroup><h2>Using Regular Expressions: <code>stringr</code></h2></hgroup><article  id="using-regular-expressions-stringr">
 
-<pre class = 'prettyprint lang-r'>head(str_subset( Sal$Name, &quot;^Payne.*&quot;), 3)</pre>
+<pre class = 'prettyprint lang-r'>head(str_subset(Sal$Name, &quot;^Payne.*&quot;), 3)</pre>
 
 <pre >[1] &quot;Payne El,Jackie&quot;         &quot;Payne Johnson,Nickole A&quot;
 [3] &quot;Payne,Chanel&quot;           </pre>
 
-<pre class = 'prettyprint lang-r'>head(str_subset( Sal$Name, &quot;Leonard.?S&quot;))</pre>
+<pre class = 'prettyprint lang-r'>head(str_subset(Sal$Name, &quot;Leonard.?S&quot;))</pre>
 
 <pre >[1] &quot;Payne,Leonard S&quot;      &quot;Szumlanski,Leonard S&quot;</pre>
 
-<pre class = 'prettyprint lang-r'>head(str_subset( Sal$Name, &quot;Spence.*C.*&quot;))</pre>
+<pre class = 'prettyprint lang-r'>head(str_subset(Sal$Name, &quot;Spence.*C.*&quot;))</pre>
 
 <pre >[1] &quot;Greene,Spencer C&quot;    &quot;Spencer,Charles A&quot;   &quot;Spencer,Christian O&quot;
 [4] &quot;Spencer,Clarence W&quot;  &quot;Spencer,Michael C&quot;  </pre>
@@ -3787,24 +3785,29 @@ head(ss)</pre>
 
 <pre class = 'prettyprint lang-r'>Sal$AnnualSalary &lt;- as.numeric(gsub(pattern = &quot;$&quot;, replacement=&quot;&quot;, 
                                     Sal$AnnualSalary, fixed=TRUE))
-Sal &lt;- Sal[order(Sal$AnnualSalary, decreasing=TRUE), ] 
-Sal[1:5, c(&quot;Name&quot;, &quot;AnnualSalary&quot;, &quot;JobTitle&quot;)]</pre>
+Sal &lt;- Sal %&gt;% arrange(desc(AnnualSalary))
+Sal %&gt;% select(Name, AnnualSalary, JobTitle)</pre>
 
-<pre ># A tibble: 5 × 3
-  Name              AnnualSalary JobTitle             
-  &lt;chr&gt;                    &lt;dbl&gt; &lt;chr&gt;                
-1 Bernstein,Gregg L       238772 STATE&#39;S ATTORNEY     
-2 Charles,Ronnie E        200000 EXECUTIVE LEVEL III  
-3 Batts,Anthony W         193800 EXECUTIVE LEVEL III  
-4 Black,Harry E           190000 EXECUTIVE LEVEL III  
-5 Swift,Michael           187200 CONTRACT SERV SPEC II</pre>
+<pre ># A tibble: 18,981 × 3
+   Name                       AnnualSalary JobTitle             
+   &lt;chr&gt;                             &lt;dbl&gt; &lt;chr&gt;                
+ 1 Bernstein,Gregg L                238772 STATE&#39;S ATTORNEY     
+ 2 Charles,Ronnie E                 200000 EXECUTIVE LEVEL III  
+ 3 Batts,Anthony W                  193800 EXECUTIVE LEVEL III  
+ 4 Black,Harry E                    190000 EXECUTIVE LEVEL III  
+ 5 Swift,Michael                    187200 CONTRACT SERV SPEC II
+ 6 Parthemos,Kaliope                172000 EXECUTIVE LEVEL III  
+ 7 Ford,Niles R                     165000 EXECUTIVE LEVEL III  
+ 8 Rawlings-Blake,Stephanie C       163365 MAYOR                
+ 9 Chow,Rudolph S                   163200 DIRECTOR PUBLIC WORKS
+10 Nilson,George A                  163200 CITY SOLICITOR       
+# ℹ 18,971 more rows</pre>
 
 </article></slide><slide class=""><hgroup><h2>Replacing and subbing: <code>stringr</code></h2></hgroup><article  id="replacing-and-subbing-stringr-1">
 
 <p>We can do the same thing (with 2 piping operations!) in dplyr</p>
 
-<pre class = 'prettyprint lang-r'>dplyr_sal = Sal
-dplyr_sal = dplyr_sal %&gt;% mutate( 
+<pre class = 'prettyprint lang-r'>dplyr_sal = Sal %&gt;% mutate( 
   AnnualSalary = AnnualSalary %&gt;%
     str_replace(
       fixed(&quot;$&quot;), 
@@ -3813,9 +3816,13 @@ dplyr_sal = dplyr_sal %&gt;% mutate(
   arrange(desc(AnnualSalary))
 check_Sal = Sal
 rownames(check_Sal) = NULL
-all.equal(check_Sal, dplyr_sal)</pre>
+all.equal(check_Sal, dplyr_sal) # they are the same</pre>
 
-<pre >[1] TRUE</pre>
+<pre >[1] &quot;Attributes: &lt; Names: 1 string mismatch &gt;&quot;                                              
+[2] &quot;Attributes: &lt; Length mismatch: comparison on first 2 components &gt;&quot;                     
+[3] &quot;Attributes: &lt; Component \&quot;class\&quot;: Lengths (4, 3) differ (string compare on first 3) &gt;&quot;
+[4] &quot;Attributes: &lt; Component \&quot;class\&quot;: 3 string mismatches &gt;&quot;                              
+[5] &quot;Attributes: &lt; Component 2: target is externalptr, current is numeric &gt;&quot;                </pre>
 
 </article></slide><slide class=""><hgroup><h2>Removing <code>$</code> and <code>,</code> in Practice</h2></hgroup><article  id="removing-and-in-practice">
 
@@ -3844,7 +3851,7 @@ all.equal(check_Sal, dplyr_sal)</pre>
 10        11310      NA 
 # ℹ 18,971 more rows</pre>
 
-</article></slide><slide class="segue dark nobackground level1"><hgroup class = 'auto-fadein'><h2>Tidying Text - What about all of Jane Austin’s Novels?</h2></hgroup><article  id="tidying-text---what-about-all-of-jane-austins-novels">
+</article></slide><slide class="segue dark nobackground level1"><hgroup class = 'auto-fadein'><h2>Tidying Text - What about all of Jane Austen’s Novels?</h2></hgroup><article  id="tidying-text---what-about-all-of-jane-austens-novels">
 
 </article></slide><slide class=""><hgroup><h2>Jane Austin</h2></hgroup><article  id="jane-austin">
 

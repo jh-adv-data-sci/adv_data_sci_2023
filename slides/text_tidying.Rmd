@@ -241,7 +241,7 @@ str_detect(x, "9.11")
 ```
 
 
-## | means or
+## `|` means or
 
 ```{r}
 x = c("Not a whole lot of hurricanes.",
@@ -268,11 +268,10 @@ str_detect(x,phone)
 ## Read in Salary Data
 ```{r}
 suppressMessages({
-  Sal = readr::read_csv(
+  raw_salary_data = Sal = readr::read_csv(
     "https://raw.githubusercontent.com/muschellij2/adv_data_sci_2023/main/example_data/Baltimore_City_Employee_Salaries_FY2014.csv", 
     progress = FALSE)
 })
-raw_salary_data = Sal
 head(Sal)
 ```
 
@@ -288,8 +287,7 @@ Sal %>% filter(str_detect(Name, "Rawlings"))
 We can do the same thing (with 2 piping operations!) in dplyr
 
 ```{r orderSal_stringr_rework}
-dplyr_sal = Sal
-dplyr_sal = dplyr_sal %>% mutate( 
+dplyr_sal = Sal %>% mutate( 
   AnnualSalary = AnnualSalary %>%
     str_replace(fixed("$"), "") %>%
     as.numeric) %>%
@@ -410,12 +408,12 @@ head(grep("Spence.*C.*", x = Sal$Name, value = TRUE))
 
 ## Using Regular Expressions: `stringr`
 ```{r grepstar_stringr}
-head(str_subset( Sal$Name, "^Payne.*"), 3)
+head(str_subset(Sal$Name, "^Payne.*"), 3)
 ```
 
 ```{r grepstar2_stringr}
-head(str_subset( Sal$Name, "Leonard.?S"))
-head(str_subset( Sal$Name, "Spence.*C.*"))
+head(str_subset(Sal$Name, "Leonard.?S"))
+head(str_subset(Sal$Name, "Spence.*C.*"))
 ```
 
 ## Replace
@@ -450,16 +448,15 @@ Now we can replace the `$` with nothing (used `fixed=TRUE` because `$` means end
 ```{r orderSal}
 Sal$AnnualSalary <- as.numeric(gsub(pattern = "$", replacement="", 
                                     Sal$AnnualSalary, fixed=TRUE))
-Sal <- Sal[order(Sal$AnnualSalary, decreasing=TRUE), ] 
-Sal[1:5, c("Name", "AnnualSalary", "JobTitle")]
+Sal <- Sal %>% arrange(desc(AnnualSalary))
+Sal %>% select(Name, AnnualSalary, JobTitle)
 ```
 
 ## Replacing and subbing: `stringr` 
 
 We can do the same thing (with 2 piping operations!) in dplyr
 ```{r orderSal_stringr}
-dplyr_sal = Sal
-dplyr_sal = dplyr_sal %>% mutate( 
+dplyr_sal = Sal %>% mutate( 
   AnnualSalary = AnnualSalary %>%
     str_replace(
       fixed("$"), 
@@ -468,7 +465,7 @@ dplyr_sal = dplyr_sal %>% mutate(
   arrange(desc(AnnualSalary))
 check_Sal = Sal
 rownames(check_Sal) = NULL
-all.equal(check_Sal, dplyr_sal)
+all.equal(check_Sal, dplyr_sal) # they are the same
 ```
 
 ## Removing `$` and `,` in Practice
@@ -487,8 +484,7 @@ raw_salary_data %>%
 folder = "../imgs/tidytext/"
 ```
 
-# Tidying Text - What about all of Jane Austin's Novels?
-
+# Tidying Text - What about all of Jane Austen's Novels?
 
 ## Jane Austin
 
@@ -600,8 +596,6 @@ head(tidy_books)
 ```
 
 
-
-
 ## Example classification
 
 ```{r AP}
@@ -625,8 +619,6 @@ comparison <- tidy(AssociatedPress) %>%
   arrange(diff)
 head(comparison)
 ```
-
-
 
 ## Bag of words
 
