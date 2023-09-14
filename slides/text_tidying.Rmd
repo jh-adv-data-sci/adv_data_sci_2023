@@ -17,6 +17,7 @@ library(stringr)
 library(tidyr)
 library(emo) # hadley/emo
 library(ggplot2)
+library(tm)
 source("../slide_functions.R")
 suppressPackageStartupMessages(library(dplyr))
 ```
@@ -112,9 +113,9 @@ Base R
 In base R, `strsplit` splits a vector on a string into a `list`
 
 ```{r strsplit}
-x <- c("I really", "like writing", "R code programs")
-(y <- strsplit(x, split = " ")) # returns a list
-(y2 <- stringr::str_split(x, " ")) # returns a list
+x = c("I really", "like writing", "R code programs")
+(y = strsplit(x, split = " ")) # returns a list
+(y2 = stringr::str_split(x, " ")) # returns a list
 ```
 
 ## Using a fixed expression
@@ -139,7 +140,7 @@ sapply(y, dplyr::last) # on the fly
 We can use `boundary` in the case of `str_split` as well:
 
 ```{r}
-words <- c("These are   some words.")
+words = c("These are   some words.")
 str_count(words, boundary("word"))
 # split with space
 str_split(words, " ")[[1]]
@@ -446,9 +447,9 @@ R didn't like the `$` so it thought turned them all to `NA`.
 Now we can replace the `$` with nothing (used `fixed=TRUE` because `$` means ending):
 
 ```{r orderSal}
-Sal$AnnualSalary <- as.numeric(gsub(pattern = "$", replacement="", 
-                                    Sal$AnnualSalary, fixed=TRUE))
-Sal <- Sal %>% arrange(desc(AnnualSalary))
+Sal$AnnualSalary = as.numeric(gsub(pattern = "$", replacement="", 
+                                   Sal$AnnualSalary, fixed=TRUE))
+Sal = Sal %>% arrange(desc(AnnualSalary))
 Sal %>% select(Name, AnnualSalary, JobTitle)
 ```
 
@@ -486,19 +487,19 @@ folder = "../imgs/tidytext/"
 
 # Tidying Text - What about all of Jane Austen's Novels?
 
-## Jane Austin
+## Jane Austen
 
 ```{r ja, out.width="70%", echo = FALSE}
-knitr::include_graphics("../imgs/tidytext/janeaustin.png")
+knitr::include_graphics("../imgs/tidytext/janeausten.png")
 ```
 
 ## Data Available via: `janeaustenr`
 
 Attached with row numbers (by book).
 
-```{r jane_austin_r}
+```{r jane_austen_r}
 library(janeaustenr)
-original_books <- austen_books() %>%
+original_books = austen_books() %>%
   group_by(book) %>%
   mutate(linenumber = row_number()) %>%
   ungroup()
@@ -555,7 +556,7 @@ unnest_tokens(dat, tok, txt)
 ## One token per row
 
 ```{r tidy_books}
-tidy_books <- original_books %>% unnest_tokens(word, text)
+tidy_books = original_books %>% unnest_tokens(word, text)
 head(tidy_books)
 ```
 
@@ -576,15 +577,17 @@ tidy_books %>%
   arrange(desc(n))
 ```
 
-
-## Stemming
-
-Can use `wordStem` to reduce certain words to their primary stem (e.g. remove gerunds/tense):
+## Top Words by Book
 
 ```{r}
-library(SnowballC)
-wordStem(c("running","fasted"))
+tidy_books %>% 
+  count(book, word) %>% 
+  arrange(desc(n)) %>% 
+  group_by(book) %>% 
+  slice(1L)
 ```
+
+
 
 
 ## Filtering with joins
@@ -595,28 +598,211 @@ tidy_books = tidy_books %>% anti_join(stop_words, by = "word")
 head(tidy_books)
 ```
 
+## Top Words after joining
+
+```{r}
+tidy_books %>% 
+  count(word) %>% 
+  arrange(desc(n))
+```
+## Top Words by Book after joining
+
+```{r}
+top_book_words = tidy_books %>% 
+  count(word, book) %>% 
+  arrange(desc(n)) %>% 
+  group_by(book) 
+(top_book_words %>% slice(1:2))
+```
+
+## Sentiment analysis
+
+<font  style='font-size:40pt'>
+"I hate this stupid class. But I love the work"
+</font>
+
+
+
+## Sentiment analysis
+
+<font  style='font-size:40pt'>
+"I <font color="red">hate</font> this <font color="red">stupid</font> class. But I <font color="blue">love</font> the work"
+</font>
+
+
+## Sentiment analysis
+
+<font  style='font-size:40pt'>
+"I <font color="red">hate</font> this <font color="red">stupid</font> class. But I <font color="blue">love</font> the work"
+<br>
+"Oh yeah, I totally <font color="blue">love</font> doing coding sessions"
+</font>
+
+
+
+## Sentiments
+
+```{r bing}
+bing = tidytext::sentiments
+head(bing)
+(dupes = bing %>% janitor::get_dupes(word))
+```
+
+## Sentiments: A little Tidying
+
+Let's remove those cases that it says these duplicates were positive
+
+```{r}
+bing = bing %>% # remove positive envy!
+  anti_join(dupes %>% filter(sentiment == "positive"))
+anyDuplicated(bing$word) == 0
+```
+
+## Aside: `any(duplicated(x))` vs. `anyDuplicated(x) == 0` speed
+
+Functions useful for checking and speed (big data): `anyNA` and `anyDuplicated
+```{r}
+microbenchmark::microbenchmark(
+  anyDup = anyDuplicated(bing$word) == 0,
+  any_dup = any(duplicated(bing$word)),
+  anyNA = anyNA(bing$word),
+  any_is_na = any(is.na(bing$word))
+)
+```
+
+## Top Word Sentiments
+
+Miss - may be misclassified (e.g. "Miss Elizabeth")
+```{r}
+top_book_words %>% slice(1:2) %>% left_join(bing, by = join_by(word))
+```
+
+## Top Word Sentiments
+
+```{r}
+top_book_words %>% inner_join(bing, by = join_by(word)) %>% slice(1:2)
+```
+
+## Assigning sentiments to words
+
+```{r ja_tidy}
+janeaustensentiment = tidy_books %>%
+  inner_join(bing, by = join_by(word)) %>% 
+  count(book, page = linenumber %/% 80, sentiment) %>% 
+  spread(sentiment, n, fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+head(janeaustensentiment)
+```
+
+## Assigning sentiments to words
+
+```{r ja_tidy_book}
+janeaustensentiment %>% 
+  group_by(book) %>% 
+  slice(1:3)
+```
+
+## Assigning sentiments to words: removing "miss"
+
+```{r ja_tidy_nomiss}
+janeaustensentiment_nomiss = tidy_books %>%
+  filter(word != "miss") %>% 
+  inner_join(bing, by = join_by(word)) %>% 
+  count(book, page = linenumber %/% 80, sentiment) %>% 
+  spread(sentiment, n, fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+```
+
+
+## Plotting the sentiment trajectory (ggplot2 loaded)
+
+```{r, fig.width = 10, fig.height = 5, out.width = "80%" }
+ggplot(janeaustensentiment, aes(page, sentiment, fill = book)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  facet_wrap(~book, ncol = 3, scales = "free_x")
+```
+
+
+## Plotting the cumulative sentiment 
+
+```{r cumsum, fig.width = 10, fig.height = 5, out.width = "80%" }
+janeaustensentiment %>% 
+  group_by(book) %>% 
+  mutate(sentiment = cumsum(sentiment)) %>% 
+  ggplot(aes(page, sentiment, colour = book)) +
+  geom_line() + ylab("Cumulative Sentiment") + xlab("Pages(ish)")
+```
+
+## Plotting the cumulative sentiment (normalized book length)
+
+```{r cumsum_norm, fig.width = 10, fig.height = 5, out.width = "80%" }
+janeaustensentiment %>% 
+  group_by(book) %>% 
+  mutate(sentiment = cumsum(sentiment),
+         page = page/max(page)) %>% 
+  ggplot(aes(page, sentiment, colour = book)) +
+  geom_line() + ylab("Cumulative Sentiment") + xlab("% Pages(ish)")
+```
+
+
+## Plotting the cumulative sentiment (normalized book length)
+
+```{r cumsum_norm_nomiss, fig.width = 10, fig.height = 5, out.width = "80%" }
+(p = janeaustensentiment_nomiss %>% 
+  group_by(book) %>% 
+  mutate(sentiment = cumsum(sentiment),
+         page = page/max(page)) %>% 
+  ggplot(aes(page, sentiment, colour = book)) +
+  geom_line(linewidth = 1.25) + ylab("Cumulative Sentiment") + xlab("% Pages(ish)"))
+```
+
+## Plotting Aside: Put Legend **Inside** the Figure
+
+```{r trans_leg, echo = FALSE, dependson="cumsum_norm_nomiss", fig.width = 10, fig.height = 5, out.width = "100%"}
+transparent_legend =  theme(
+  legend.background = element_rect(fill = "transparent"),
+  legend.key = element_rect(fill = "transparent", 
+                            color = "transparent"))
+p + 
+  transparent_legend + 
+  scale_color_brewer(type = "qual") + 
+  scale_x_continuous(labels = scales::percent_format()) +
+  theme(legend.position = c(0.2, 0.7), text = element_text(size = 20)) + 
+  guides(colour = guide_legend(title = "Book", 
+                               override.aes = list(linewidth = 2)))
+```
+
+## Plotting Aside: Put Legend **Inside** the Figure
+
+```{r trans_leg_show, eval = FALSE}
+<<trans_leg>>
+```
+
+
+
+
+
 
 ## Example classification
 
 ```{r AP}
 library(tm); 
-data("AssociatedPress", package = "topicmodels")
-AssociatedPress
+data("AssociatedPress", package = "topicmodels"); AssociatedPress
 class(AssociatedPress)
 head(tidy(AssociatedPress)) # generics::tidy
 ```
 
 
-## Compare frequencies: Jane Austin vs. the AP
+## Compare frequencies: Jane Austen vs. the AP
 
 ```{r}
-comparison <- tidy(AssociatedPress) %>%
+comparison = tidy(AssociatedPress) %>%
   count(word = term, name = "AP") %>%
   inner_join(count(tidy_books, word, name = "Austen")) %>%
   mutate(AP = AP / sum(AP),
          Austen = Austen / sum(Austen),
          diff = AP - Austen) %>% 
-  arrange(diff)
+  arrange(desc(abs(diff)))
 head(comparison)
 ```
 
@@ -691,88 +877,17 @@ plot(cor_ss)
 The max similarity is not symmetrical (closest document/book to document 1 does not have document 1 as its closest document/book):
 
 ```{r}
-(index <- which.max(cor1[-1]))
+(index = which.max(cor1[-1]))
 cor_ss = cor(dtm[index,],t(dtm))[1,]
 which.max(cor_ss[-index]) # not 1!
 ```
 
-## Sentiment analysis
+## Stemming
 
-<font  style='font-size:40pt'>
-"I hate this stupid class. But I love the instructor"
-</font>
-
-
-
-## Sentiment analysis
-
-<font  style='font-size:40pt'>
-"I <font color="red">hate</font> this <font color="red">stupid</font> class. But I <font color="blue">love</font> the instructor"
-</font>
-
-
-## Sentiment analysis
-
-<font  style='font-size:40pt'>
-"I <font color="red">hate</font> this <font color="red">stupid</font> class. But I <font color="blue">love</font> the instructor"
-<br>
-"Oh yeah, I totally <font color="blue">love</font> doing coding sessions"
-</font>
-
-
-
-## Sentiments
-
-```{r bing}
-bing <- tidytext::sentiments
-head(bing)
-(dupes <- bing %>% janitor::get_dupes(word))
-```
-
-## Sentiments: A little Tidying
-
-Let's remove those cases that it says these duplicates were positive
+Can use `wordStem` to reduce certain words to their primary stem (e.g. remove gerunds/tense):
 
 ```{r}
-bing = bing %>% 
-  anti_join(dupes %>% filter(sentiment == "positive"))
-anyDuplicated(bing$word)
+library(SnowballC)
+wordStem(c("running","fasted"))
 ```
 
-## Assigning sentiments to words
-
-```{r ja_tidy}
-janeaustensentiment <- tidy_books %>%
-  inner_join(bing, by = join_by(word)) %>% 
-  count(book, index = linenumber %/% 80, sentiment) %>% 
-  spread(sentiment, n, fill = 0) %>% 
-  mutate(sentiment = positive - negative)
-head(janeaustensentiment)
-```
-
-
-## Plotting the sentiment trajectory (ggplot2 loaded)
-
-```{r, fig.width = 10, fig.height = 5, out.width = "80%" }
-ggplot(janeaustensentiment, aes(index, sentiment, fill = book)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
-  facet_wrap(~book, ncol = 3, scales = "free_x")
-```
-
-
-## Plotting the cumulative sentiment 
-
-```{r cumsum, fig.width = 10, fig.height = 5, out.width = "80%" }
-ggplot(janeaustensentiment, aes(index, cumsum(sentiment), colour = book)) +
-  geom_line() + ylab("Cumulative Sentiment") + xlab("Pages(ish)")
-```
-
-## Plotting the cumulative sentiment (normalized book length)
-
-```{r cumsum_norm, fig.width = 10, fig.height = 5, out.width = "80%" }
-janeaustensentiment %>% 
-  group_by(book) %>% 
-  mutate(index = index/max(index)) %>% 
-  ggplot(aes(index, cumsum(sentiment), colour = book)) +
-  geom_line()  + ylab("Cumulative Sentiment") + xlab("Percent Pages")
-```
