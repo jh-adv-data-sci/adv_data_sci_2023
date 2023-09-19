@@ -481,6 +481,25 @@ raw_salary_data %>%
 ```
 
 
+## Back Referencing 
+
+`( )` do grouping in regex, but you can also reference these groups with the the order in which they are in:
+
+```{r backref}
+x = c("Are you here?", "I think that is him.", "why didn't they?")
+str_replace(
+  x, 
+  regex(".*(are|think|did).*([.?])", ignore_case = TRUE), 
+  "The verb of the sentence was \\1 and the ending punctuation is \\2")
+```
+Note, you can't reference something that doesn't exist (no 3rd group):
+```{r backref2, error=TRUE}
+str_replace(x, 
+            regex(".*(are|think|did).*([.?])", ignore_case = TRUE), 
+            "verb: \\1, ending punctuation: \\2, and \\3")
+```
+
+
 ```{r setup2, include = FALSE}
 folder = "../imgs/tidytext/"
 ```
@@ -568,6 +587,17 @@ knitr::include_graphics("../imgs/tidytext/wordcloud.png")
 
 http://xpo6.com/list-of-english-stop-words/
 
+## Wordcloud for Sense & Sensibility
+
+```{r wordcloud_out}
+tt = tidy_books %>% 
+  filter(book == "Sense & Sensibility") %>% 
+  count(word) %>% 
+  arrange(desc(n)) %>% 
+  slice(1:200L)
+wordcloud::wordcloud(tt$word, tt$n)
+```
+
 ## Stop words/words to filter
 
 ```{r}
@@ -594,8 +624,7 @@ tidy_books %>%
 
 ```{r}
 head(stop_words)
-tidy_books = tidy_books %>% anti_join(stop_words, by = "word")
-head(tidy_books)
+(tidy_books = tidy_books %>% anti_join(stop_words, by = "word"))
 ```
 
 ## Top Words after joining
@@ -614,6 +643,20 @@ top_book_words = tidy_books %>%
   group_by(book) 
 (top_book_words %>% slice(1:2))
 ```
+
+## Wordcloud for Sense & Sensibility (no stopwords)
+
+```{r wordcloud_nostop, warning=FALSE}
+tt = tidy_books %>% 
+  filter(book == "Sense & Sensibility") %>% 
+  count(word) %>% 
+  arrange(desc(n)) %>% 
+  slice(1:200L)
+wordcloud::wordcloud(tt$word, tt$n)
+```
+
+
+
 
 ## Sentiment analysis
 
@@ -704,6 +747,7 @@ janeaustensentiment %>%
 
 ## Assigning sentiments to words: removing "miss"
 
+In reality, you'd probably do more tidying on words like this, or a more sophisticated NLP approach (or `gsub("miss (elizabeth|elinor)", "\\1", x)`).
 ```{r ja_tidy_nomiss}
 janeaustensentiment_nomiss = tidy_books %>%
   filter(word != "miss") %>% 
@@ -749,11 +793,11 @@ janeaustensentiment %>%
 
 ```{r cumsum_norm_nomiss, fig.width = 10, fig.height = 5, out.width = "80%" }
 (p = janeaustensentiment_nomiss %>% 
-  group_by(book) %>% 
-  mutate(sentiment = cumsum(sentiment),
-         page = page/max(page)) %>% 
-  ggplot(aes(page, sentiment, colour = book)) +
-  geom_line(linewidth = 1.25) + ylab("Cumulative Sentiment") + xlab("% Pages(ish)"))
+   group_by(book) %>% 
+   mutate(sentiment = cumsum(sentiment),
+          page = page/max(page)) %>% 
+   ggplot(aes(page, sentiment, colour = book)) + geom_line(linewidth = 1.25) +
+   ylab("Cumulative Sentiment") + xlab("% Pages(ish)"))
 ```
 
 ## Plotting Aside: Put Legend **Inside** the Figure
@@ -778,6 +822,33 @@ p +
 <<trans_leg>>
 ```
 
+
+
+## Stemming
+
+Can use `wordStem` to reduce certain words to their primary stem (e.g. remove gerunds/tense):
+
+```{r}
+library(SnowballC)
+wordStem(c("running","fasted"))
+```
+
+## Stemming
+
+Stemming gets you the root of the word, but the stem may be odd:
+
+```{r}
+tidy_books %>% 
+  mutate(stem = SnowballC::wordStem(word)) %>% 
+  filter(stem != word) %>% 
+  head(20)
+```
+
+
+
+
+
+# Extra slides
 
 
 
@@ -845,6 +916,13 @@ Make a `DocuemntTermMatrix`/reshape the data:
 ```{r}
 dtm = dat %>% cast_dtm(document = book, term = word, value = count)
 inspect(dtm[1:6,1:10])
+```
+
+## Normalized Matrices
+
+Here we normalize documents based on number of words:
+
+```{r normalize}
 dtm = as.matrix(dtm)
 dtm = dtm/rowSums(dtm)
 ```
@@ -882,12 +960,50 @@ cor_ss = cor(dtm[index,],t(dtm))[1,]
 which.max(cor_ss[-index]) # not 1!
 ```
 
-## Stemming
 
-Can use `wordStem` to reduce certain words to their primary stem (e.g. remove gerunds/tense):
+
+## Unsupervised topics
+
+To see if we can separate the words into different topics, we can use an Latent Dirichlet Allocation (LDA).  
+
+The LDA estimates how much:
+
+- Each topic contributes to each document
+- Each word contributes to each topic 
+
+## Unsupervised topics
+
+For `topicmodels::LDA`, we need a DocumentTermMatrix (DTM) and can create one using `tidytext::cast_dtm`:
 
 ```{r}
-library(SnowballC)
-wordStem(c("running","fasted"))
+dtm = tidy_books %>% 
+  count(book, word) %>% 
+  tidytext::cast_dtm(document = book, term = word, value = n)
+unique_indexes <- unique(dtm$i) # get the index of each unique value
+
+# let's try 6 topics
+lda <- topicmodels::LDA(dtm, k = 6L, control = list(seed = 20230910))
+topics <- tidy(lda, matrix = "beta")
+head(topics)
 ```
 
+## Unsupervised topics
+
+For `topicmodels::LDA`, we need a `DocumentTermMatrix` (DTM) and can create one using `tidytext::cast_dtm`:
+
+```{r tidymod}
+# get the top 12 terms for each topic
+top_terms <- topics  %>%
+  group_by(topic) %>% 
+  top_n(12, beta) %>% # get the top 12 beta by topic
+  ungroup() %>% # ungroup
+  arrange(topic, -beta) # arrange words in descending informativeness
+
+top_terms %>% # take the top terms
+  mutate(term = reorder(term, beta)) %>% # sort terms by beta value 
+  ggplot(aes(term, beta, fill = factor(topic))) + # plot beta by theme
+  geom_col(show.legend = FALSE) + # as a bar plot
+  facet_wrap(~ topic, scales = "free") + # which each topic in a seperate plot
+  labs(x = NULL, y = "Beta") + # no x label, change y label 
+  coord_flip() 
+```
