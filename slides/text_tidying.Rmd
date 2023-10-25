@@ -250,7 +250,7 @@ x = c("Not a whole lot of hurricanes.",
       "hurricanes swirl in the other direction",
       "coldfire is STRAIGHT!")
 
-str_detect(x,"flood|earthquake|hurricane|coldfire")
+str_detect(x, "flood|earthquake|hurricane|coldfire")
 ```
 
 
@@ -850,8 +850,14 @@ tidy_books %>%
 
 # Extra slides
 
+## Other Text packages;
 
+- Text Mining in R - [`tm`](https://cran.r-project.org/web/packages/tm/index.html)
+- Latent Dirichlet Allocation (LDA) models and Correlated Topics Models (CTM) - [`topicmodels`](https://cran.r-project.org/web/packages/topicmodels/index.html)
+- `quanteda`: Quantitative Analysis of Textual Data - http://quanteda.io/
 
+- Still need to know these because `topicmodels` take `tm` objects
+- `tidytext` has a number of `cast_*` functions
 
 
 ## Example classification
@@ -859,8 +865,7 @@ tidy_books %>%
 ```{r AP}
 library(tm); 
 data("AssociatedPress", package = "topicmodels"); AssociatedPress
-class(AssociatedPress)
-head(tidy(AssociatedPress)) # generics::tidy
+class(AssociatedPress); head(tidy(AssociatedPress)) # generics::tidy
 ```
 
 
@@ -868,7 +873,9 @@ head(tidy(AssociatedPress)) # generics::tidy
 
 ```{r}
 comparison = tidy(AssociatedPress) %>%
-  count(word = term, name = "AP") %>%
+  group_by(term) %>% 
+  summarise(AP = sum(count)) %>% # add up the counts
+  rename(word = term) %>% 
   inner_join(count(tidy_books, word, name = "Austen")) %>%
   mutate(AP = AP / sum(AP),
          Austen = Austen / sum(Austen),
@@ -877,7 +884,8 @@ comparison = tidy(AssociatedPress) %>%
 head(comparison)
 ```
 
-## Bag of words
+## Bag of words: Count of words by Document
+
 
 ```{r}
 tidy_freq = tidy_books %>% 
@@ -911,7 +919,7 @@ head(dat)
 
 ## Term-document matrices
 
-Make a `DocuemntTermMatrix`/reshape the data:
+Make a `DocuemntTermMatrix`/reshape the data (`tm` object):
 
 ```{r}
 dtm = dat %>% cast_dtm(document = book, term = word, value = count)
@@ -966,6 +974,11 @@ which.max(cor_ss[-index]) # not 1!
 
 To see if we can separate the words into different topics, we can use an Latent Dirichlet Allocation (LDA).  
 
+Assumptions: 
+
+1. Every document is a mixture of topics. 
+2. Every topic is a mixture of words. 
+
 The LDA estimates how much:
 
 - Each topic contributes to each document
@@ -973,27 +986,25 @@ The LDA estimates how much:
 
 ## Unsupervised topics
 
-For `topicmodels::LDA`, we need a DocumentTermMatrix (DTM) and can create one using `tidytext::cast_dtm`:
+For `topicmodels::LDA`, we need a `DocumentTermMatrix` (DTM) and can create one using `tidytext::cast_dtm`:
 
 ```{r}
 dtm = tidy_books %>% 
   count(book, word) %>% 
   tidytext::cast_dtm(document = book, term = word, value = n)
-unique_indexes <- unique(dtm$i) # get the index of each unique value
+unique_indexes = unique(dtm$i) # get the index of each unique value
 
 # let's try 6 topics
-lda <- topicmodels::LDA(dtm, k = 6L, control = list(seed = 20230910))
-topics <- tidy(lda, matrix = "beta")
+lda = topicmodels::LDA(dtm, k = 6L, control = list(seed = 20230910))
+topics = tidy(lda, matrix = "beta")
 head(topics)
 ```
 
 ## Unsupervised topics
 
-For `topicmodels::LDA`, we need a `DocumentTermMatrix` (DTM) and can create one using `tidytext::cast_dtm`:
-
 ```{r tidymod}
-# get the top 12 terms for each topic
-top_terms <- topics  %>%
+# get the to2 12 terms for each topic
+top_terms = topics  %>%
   group_by(topic) %>% 
   top_n(12, beta) %>% # get the top 12 beta by topic
   ungroup() %>% # ungroup
@@ -1007,3 +1018,92 @@ top_terms %>% # take the top terms
   labs(x = NULL, y = "Beta") + # no x label, change y label 
   coord_flip() 
 ```
+
+## Two Topics
+
+Here we just do 2 topics and show the top differentiated terms:
+```{r}
+# let's try 2 topics
+lda = topicmodels::LDA(dtm, k = 2L, control = list(seed = 20230910))
+topics = tidy(lda, matrix = "beta")
+beta_wide = topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  pivot_wider(names_from = topic, values_from = beta) %>% 
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+```
+
+```{r plot_ratio, echo = FALSE}
+b = beta_wide %>% 
+  mutate(sign = sign(log_ratio)) %>% 
+  arrange(desc(abs(log_ratio))) %>% 
+  group_by(sign) %>% 
+  slice(1:10L) %>% 
+  ungroup() %>% 
+  arrange(log_ratio)
+b = b %>% 
+  mutate(term = factor(term, levels = term))
+b %>% 
+  ggplot(aes(x = term, y = log_ratio)) + geom_bar(stat = "identity") +
+  coord_flip() + xlab(NULL) + 
+  ylab("Log Ratio of Beta between topic 2 and topic 1")
+```
+## Topics contributing to Documents
+
+We can extract the per-document-per-topic probabilities with the gamma param:
+```{r}
+(docs = tidy(lda, matrix = "gamma") %>% 
+  arrange(topic, desc(gamma)))
+```
+
+
+## AP and Jane Austen
+
+What happens when we put the AP and Jane Austen data together?
+
+```{r}
+dtm = dat %>% cast_dtm(document = book, term = word, value = count)
+lda = topicmodels::LDA(dtm, k = 2L, control = list(seed = 20230910))
+topics = tidy(lda, matrix = "beta")
+docs = tidy(lda, matrix = "gamma") %>% 
+  arrange(topic, desc(gamma))
+docs %>% filter(grepl("[a-z]", tolower(document)))
+```
+
+## AP and Jane Austen
+
+```{r plot_ratio_both, echo = FALSE}
+beta_wide = topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  pivot_wider(names_from = topic, values_from = beta) %>% 
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+b = beta_wide %>% 
+  mutate(sign = sign(log_ratio)) %>% 
+  arrange(desc(abs(log_ratio))) %>% 
+  group_by(sign) %>% 
+  slice(1:10L) %>% 
+  ungroup() %>% 
+  arrange(log_ratio)
+b = b %>% 
+  mutate(term = factor(term, levels = term))
+b %>% 
+  ggplot(aes(x = term, y = log_ratio)) + geom_bar(stat = "identity") +
+  coord_flip() + xlab(NULL) + 
+  ylab("Log Ratio of Beta between topic 2 and topic 1")
+```
+
+## Other Models
+
+Latent Semantic Analysis (LSA), essentially SVD on the document matrix
+
+```{r}
+library("quanteda.textmodels")
+full_dfm = dat %>% cast_dfm(document = book, term = word, value = count)
+lsa <- textmodel_lsa(full_dfm)
+head(lsa$docs)# the number of dimensions to be included in output
+head(lsa$features)
+```
+
+
+# https://www.tidytextmining.com/
