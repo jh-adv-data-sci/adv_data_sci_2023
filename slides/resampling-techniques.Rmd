@@ -109,15 +109,15 @@ Let's start by having a look at the data.
 
 ```{r}
 dim(verizon)
-table(verizon$group)
+verizon %>% 
+  count(group)
 
-hist(verizon$time)
+(ghist = ggplot(verizon, aes(x = time)) + geom_histogram())
 
-par(mfrow = c(1, 2))
-hist(verizon$time[verizon$group == "ILEC"], main = "ILEC", xlab = "time")
-hist(verizon$time[verizon$group == "CLEC"], main = "CLEC", xlab = "time")
+ghist + facet_wrap(~ group, nrow = 1, scales = "free_y")
 
-boxplot(time ~ group, data = verizon)
+(gbox = ggplot(verizon, aes(x = group, y = time)) + 
+    geom_boxplot())
 ```
 
 Next, we calculate what the difference is
@@ -230,6 +230,7 @@ t.test(verizon$time[verizon$group == "ILEC"],
 We see a $p$-value is about 0.0045, suggesting 
 that there is a difference at the $\alpha$ = 0.01 level. 
 
+## Aside: Ways of Specifying a T-test
 Alternatively, we can do a `t.test` with the formula syntax:
 ```{r t.test2}
 t.test(time ~ group, data = verizon,
@@ -256,6 +257,8 @@ verizon %>%
 
 ```
 
+## Back to testing
+
 However, let's think... Why might the $t$-test not
 be appropriate here? 
 
@@ -275,21 +278,17 @@ verizon %>%
 ```
 
 ```{r}
-par(mfrow = c(1, 2))
-qqnorm(verizon[verizon$group=="ILEC",]$time)
-qqline(verizon[verizon$group=="ILEC",]$time)
-
-qqnorm(verizon[verizon$group=="CLEC",]$time)
-qqline(verizon[verizon$group=="CLEC",]$time)
+verizon %>% 
+  ggplot(aes(sample = time)) + 
+  geom_qq() + 
+  geom_qq_line() + 
+  facet_wrap( ~ group, scales = "free") +
+  ggtitle("Q-Q Plots of Wait Times")
 ```
 
 The histograms and QQ-plots show that the samples 
 are strongly skewed. For more details on QQ-plots, see 
 chapter 2 of the textbook by Chihara and Hesterberg.
-
-```{r}
-table(verizon$group)
-```
 
 So, let's try to explore a different way to calculate 
 a $p$-value that doesn't depend on a theoretical distribution.
@@ -535,6 +534,31 @@ distribution has a larger spread (due to small
 sample size) and is very skewed. The difference 
 in repair times bootstrap distribution is also 
 strongly skewed with a wide spread. 
+
+
+## Aside: Tidy bootstrapping
+
+Here's a way to do sampling using `slice_sample` (but this takes longer than above):
+```{r tidy_boot, eval = FALSE}
+B <- 10^4
+set.seed(123)
+boot_results = matrix(nrow = B, ncol = 3)
+colnames(boot_results) = c("CLEC", "ILEC", "diff_repair_time")
+boot_results = tibble::as_tibble(boot_results)
+for (i in 1:B) {
+  boot_data = verizon %>% 
+    group_by(group) %>% 
+    slice_sample(prop = 1, replace = TRUE)
+  mean_repair <- boot_data %>% 
+    group_by(group) %>% 
+    summarize(mean_repair_time = mean(time)) %>% 
+    spread(key=group,value=mean_repair_time) %>% 
+    mutate(diff_repair_time = ILEC - CLEC)
+  boot_results$CLEC[i] <- mean_repair$ILEC
+  boot_results$ILEC[i] <- mean_repair$CLEC
+  boot_results$diff_repair_time[i] <- mean_repair$diff_repair_time
+}
+```
 
 
 ### Bootstrap percentile confidence intervals
