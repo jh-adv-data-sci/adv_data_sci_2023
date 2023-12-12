@@ -16,15 +16,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r packages}
 #| message: FALSE
 #| echo: TRUE
+library(ggplot2)
 library(plotly)
-library(leaflet)
 library(ggiraph)
 library(highcharter)
 library(rCharts) # ramnathv/rCharts
-library(ggplot2)
+library(leaflet)
 library(tibble)
 library(dplyr)
 library(tidyr)
+library(crosstalk)
+library(DT)
 ```
 
 ## Why Interactive Graphics?
@@ -39,25 +41,38 @@ library(tidyr)
 -   Because a collaborator asked
 :::
 
-## (Some) Packages in R
+## Packages in R Covered (at least in part)
 
 ::: incremental
--   plotly - especially `ggplotly()`
+-   plotly - framework for interactive plotting (covered a lot)
 
--   ggiraph
+-   ggiraph - R package that creates interactive ggplot graphs using D3 and other frameworks
 
--   highcharter
+-   highcharter - wraps JS framework [Highcharts](https://www.highcharts.com/)
 
--   Won't cover
+-   rCharts - interactive javascript visualizations from R using a familiar lattice style plotting interface
 
-    -   rCharts (ramnathv/rCharts)
-
-    -   rbokeh
-
-    -   leaflet
+    -   Interfaces polychart, Morris, NVD3, xCharts, Highcharts, Leaflet, Rickshaw
+    -   https://github.com/ramnathv/rCharts
 :::
 
-## How to build
+## Packages not covered
+
+:::
+
+-   rbokeh - another framework for interactive plotting
+
+-   leaflet - great for interactive maps
+
+-   rayshader - interactive 3D maps/plots/ggplot2s
+
+-   d3heatmap - interactive heatmamps
+
+-   threejs - 3D scatterplots
+
+:::
+
+## How to build an interactive graphic
 
 Many cases you know how to build a `ggplot2` object
 
@@ -65,19 +80,17 @@ May want to "interactive" it up
 
 Many times you will hit roadblocks or limitations
 
-## Scatterplot
+## Toy Cars
 
-We're going to be using the toyest example in R, `mtcars` ! But we want the car names
+We're going to be using the toyest data, `mtcars` ! But we want the car names
 
 ```{r cars}
 #| echo: TRUE
-cars = mtcars %>% 
+(cars <- as_tibble(mtcars) %>% 
     rownames_to_column(var = "car") %>% 
     separate(car, into = c("make", "blah"), sep = " ", remove = FALSE, extra = "merge") %>% 
     select(make, car, everything()) %>% 
-    select(-blah) %>% 
-    as_tibble()
-cars
+    select(-blah))
 ```
 
 ## Scatterplot
@@ -109,7 +122,7 @@ ggplotly(p)
 
 ## Interactive Points (plotly)
 
-`plotly::ggplotly` turns your objects into `plotly` objects!
+Does a lot of the `geom`s
 
 ```{r}
 ggplotly(p + geom_line())
@@ -138,39 +151,6 @@ plotly_button_config = function(fig,
 plotly_button_config(ggplotly(p))
 ```
 
-## Interactive Points (ggiraph)
-
-In `ggiraph` (giraffe) you cannot transform a `ggplot` object but you have the same syntax, but put an `_interactive` on it.
-
-[![](../imgs/interactive_visualization/put_a_bird_on_it.gif){fig-alt="Put a \"Bird on It\" Meme from Portlandia TV show" fig-align="center" width="50%"}](https://www.youtube.com/watch?v=GNpIOlDhigw)
-
-## Interactive Points (ggiraph)
-
-```{r make_p_interactive}
-(g <- ggplot(cars, aes(wt, mpg)) +
-    geom_point_interactive() +
-    xlab("Weight (in tons)") + 
-    ylab("Miles Per Gallon (MPG)") + 
-    theme_bw(base_size = 22))
-```
-
-## Need to `girafe` it?
-
-```{r make_p_show}
-girafe(ggobj = g)
-```
-
-## ggiraph: No default tooltips
-
-```{r make_p_interactive_work}
-g <- ggplot(cars, aes(wt, mpg, tooltip = car)) +
-    geom_point_interactive() +
-    xlab("Weight (in tons)") + 
-    ylab("Miles Per Gallon (MPG)") + 
-    theme_bw(base_size = 22)
-girafe(ggobj = g)
-```
-
 ## More Interaction!
 
 ```{r}
@@ -194,6 +174,176 @@ ggplotly(gcol)
 ```{r gcol_facet}
 ggplotly(gcol + facet_wrap(~ factor(cyl)))
 ```
+
+## Use Plotly interface directly (faster), uses formula syntax!
+
+<https://plotly.com/r/plotly-fundamentals/> is a great resource for starting (maybe 2 hours?)
+
+[![](../imgs/interactive_visualization/plotly_fundamentals.png){fig-alt="Screenshot of Plotly webpage for fundamentals of plotting." fig-align="center" width="50%"}](https://plotly.com/r/plotly-fundamentals/)
+
+## Use Plotly interface directly
+
+Uses pipes not `+`. Main function is `plot_ly` (guesses type). Treats variable types as continuous if numbers.
+
+```{r plotly_fig1}
+#| message: TRUE
+cars %>% 
+  plot_ly(x = ~ hp, y = ~mpg, color = ~ cyl)
+```
+
+## Put the type in though
+
+And can do factor on the fly like normal formulas.
+
+```{r plotly_scatter}
+#| message: TRUE
+cars %>% 
+  plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter", mode = "markers")
+```
+
+## Multiple types are with `+` (but in quotes)
+
+```{r plotly_scat_line}
+#| message: TRUE
+cars %>% 
+  plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter", mode = "markers+lines")
+```
+## It plots in order it sees
+
+```{r plotly_scat_line2}
+#| message: TRUE
+cars %>% 
+  arrange(hp, mpg) %>% 
+  plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter", mode = "markers+lines")
+```
+
+## Use Plotly interface directly
+
+Can do very basic things.
+
+```{r easy_plotly}
+plot_ly(x = c(1, 2, 3), y = c(1, 3, 2), type = 'bar') %>% 
+  layout(title = 'A Plotly Figure',
+         plot_bgcolor='#e5ecf6', 
+         xaxis = list( 
+           zerolinecolor = '#ffff', 
+           zerolinewidth = 2, 
+           gridcolor = 'ffff'), 
+         yaxis = list( 
+           zerolinecolor = '#ffff', 
+           zerolinewidth = 2, 
+           gridcolor = 'ffff')) 
+```
+
+## Lot of add\_\* functions
+
+```{r}
+#| message: TRUE
+cars %>% 
+  plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter") %>% 
+  add_lines()
+```
+
+## Lot of add\_\* functions
+
+```{r}
+#| message: TRUE
+  cars %>% 
+    plot_ly(x = ~ cyl, y = ~mpg, type = "box") %>% 
+  add_markers()
+```
+
+## Jitter
+
+```{r}
+(jplot <- cars %>% 
+  plot_ly(x = ~ cyl, y = ~mpg, type = "box") %>% 
+  add_boxplot(jitter = 0.3, boxpoints = "all"))
+```
+
+## How do we know that parameter?
+
+Lots of different options. Has pros/cons vs. ggplot2.
+
+```{r}
+#| eval: FALSE
+?plotly::schema
+# traces -> boxplot -> attributes -> boxpoints 
+```
+
+## Plotly can do ... a lot
+
+```{r}
+# volcano is a numeric matrix that is in base R
+(vplot <- plot_ly(z = ~volcano) %>% add_surface())
+```
+
+## Plotly can do ... a lot
+
+```{r}
+(miniplot <- plotly::plot_ly() %>% 
+  add_trace(x = c(1, 2, 3), y = c(4, 3, 2), mode='lines') %>% 
+  add_trace(x = c(20, 30, 40), y = c(30, 40, 50), 
+            xaxis='x2', yaxis='y2', mode='lines') %>%  # new axis
+  layout(xaxis2 = list(domain = c(0.6, 0.95), anchor='y2'), # anchor based on axis
+         yaxis2 = list(domain = c(0.6, 0.95), anchor='x2')))
+```
+
+## Can do subplots
+
+```{r}
+subplot(jplot, jplot, nrows = 2, margin = 0.05)
+```
+
+## Some things don't merge nicely
+
+```{r}
+subplot(jplot, vplot, nrows = 2,  margin = 0.05)
+```
+
+## Some things don't merge nicely
+
+```{r}
+subplot(jplot, vplot, nrows = 2,  margin = 0.05)
+```
+
+# ggiraph - (giraffe)
+
+## Interactive Points (ggiraph)
+
+In `ggiraph` you cannot transform a `ggplot` object but you have the same syntax, but put an `_interactive` on it.
+
+[![](../imgs/interactive_visualization/put_a_bird_on_it.gif){fig-alt="Put a \"Bird on It\" Meme from Portlandia TV show" fig-align="center" width="50%"}](https://www.youtube.com/watch?v=GNpIOlDhigw)
+
+## Interactive Points (ggiraph)
+
+```{r make_p_interactive}
+(g <- ggplot(cars, aes(wt, mpg)) +
+    geom_point_interactive() +
+    xlab("Weight (in tons)") + 
+    ylab("Miles Per Gallon (MPG)") + 
+    theme_bw(base_size = 22))
+```
+
+## Need to `girafe` it?
+
+```{r make_p_show}
+girafe(ggobj = g)
+```
+
+## ggiraph: No default tooltips
+
+```{r make_p_interactive_work}
+g <- ggplot(cars, aes(wt, mpg)) +
+    geom_point_interactive(aes(tooltip = car)) +
+    geom_line_interactive() +
+    xlab("Weight (in tons)") + 
+    ylab("Miles Per Gallon (MPG)") + 
+    theme_bw(base_size = 22)
+girafe(ggobj = g)
+```
+
+# Highcharter - wrapper for Highcharts JS Library
 
 ## Highcharter: Click away groups
 
@@ -229,7 +379,7 @@ car_count %>%
   )
 ```
 
-## Highcharter Tile Map:
+## Highcharter Tile Map
 
 ```{r}
 #| echo: FALSE
@@ -288,9 +438,11 @@ Highcharts offers both a commercial license as well as a free non-commercial lic
 
 [![](imgs/interactive_visualization/highcharts_pricing.png){fig-alt="Pricing Chart for Highcharts" fig-align="center"}](https://shop.highcharts.com/)
 
+# rCharts: a JS widget interface
+
 ## rCharts: Different Syntax
 
-```{r eval = FALSE, results = 'asis', comment = NA, cache = FALSE}
+```{r results = 'asis', comment = NA, cache = FALSE}
 n1 <- car_count %>% 
   nPlot(n ~ producer, group = "cylinders", data = ., type = "multiBarChart")
 n1$show('inline', include_assets = TRUE, cdn = TRUE)
@@ -298,22 +450,79 @@ n1$show('inline', include_assets = TRUE, cdn = TRUE)
 
 ## rCharts: Scale to 100%
 
-```{r eval = FALSE, results = 'asis', comment = NA, cache = FALSE}
+```{r results = 'asis', comment = NA, cache = FALSE}
 n2 <- car_count %>% 
   nPlot(pct ~ producer, group = "cylinders", data = ., type = "multiBarChart")
 n2$show('inline', include_assets = TRUE, cdn = TRUE)
 ```
 
+```{css echo=FALSE}
+.big-code{
+  font-size: 200%  
+}
+```
+## Remember Basic Figure Tenets
+
+-   Show what you're trying to show, stop making it too much
+
+-   Hone in on the insights you found (don't be too subtle)
+
+-   You should be able to get the gist before you read anything
+
+-   Make [Labels Larger]{.big-code}
+
+-   Label Panels/Facets/Subplots (A, B, C, D)
+
+-   Keep colors consistent if connected and distinct if not
+
+-   Watch out for yellow with white text or on white background (projector)
+
+-   Caption your figures
+
+## A Summary
+
+-   Interactive graphics are sometimes powerful, but limited to HTML
+
+-   Many different frameworks, customization ease is highly variable
+
+-   Remember basic plotting tenets: show what you want to show, hone in on the insights (don't be sutle
+
+-   `plotly` good general framework, has a `ggplot2` wrapper, but highcharts has some built in niceties.
+
+# Plotly can also work with `crosstalk`
+
+## Crosstalk: Shared Data is the Key
+
+```{r}
+sd <- SharedData$new(quakes[sample(nrow(quakes), 100),])
+# Use SharedData like a dataframe with Crosstalk-enabled widgets
+bscols(
+  leaflet(sd) %>% addTiles() %>% addMarkers(),
+  datatable(sd, extensions="Scroller", style="bootstrap", class="compact", width="100%",
+    options=list(deferRender=TRUE, scrollY=300, scroller=TRUE))
+)
+```
+
 ## Making Connected Graphs are Hard
 
--   Possible to do within the same framework (e.g. Plotly)
+-   Much easier to do within the same framework (e.g. Plotly)
 
--   Possible do to that with JavaScript only
+-   Possible do it, but need to know JavaScript
 
 -   Can use Shiny (see <https://mastering-shiny.org/action-graphics.html>)
 
--   Can also use crosstalk (<https://rstudio.github.io/crosstalk/>)
+-   Can use crosstalk (<https://rstudio.github.io/crosstalk/>)
 
     -   Must be a subset of certain htmlwidgets
 
-    -   DT - data tables
+        -   DT - data tables
+
+        -   Leaflet
+
+        -   Plotly
+
+## Conclusion
+
+> **The purpose of visualization is insight, not pictures.** ―Ben Shneiderman
+
+> **Above all else, show the data.** ―Edward Tufte
