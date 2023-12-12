@@ -58,8 +58,6 @@ library(DT)
 
 ## Packages not covered
 
-:::
-
 -   rbokeh - another framework for interactive plotting
 
 -   leaflet - great for interactive maps
@@ -69,8 +67,6 @@ library(DT)
 -   d3heatmap - interactive heatmamps
 
 -   threejs - 3D scatterplots
-
-:::
 
 ## How to build an interactive graphic
 
@@ -86,11 +82,31 @@ We're going to be using the toyest data, `mtcars` ! But we want the car names
 
 ```{r cars}
 #| echo: TRUE
-(cars <- as_tibble(mtcars) %>% 
-    rownames_to_column(var = "car") %>% 
-    separate(car, into = c("make", "blah"), sep = " ", remove = FALSE, extra = "merge") %>% 
-    select(make, car, everything()) %>% 
-    select(-blah))
+(cars <- mtcars %>% 
+   rownames_to_column(var = "car") %>% 
+   as_tibble() %>% 
+   separate(car, into = c("make", "blah"), sep = " ", remove = FALSE, extra = "merge") %>% 
+   select(make, car, everything()) %>% 
+   select(-blah))
+```
+
+## DT: Data Tables
+https://datatables.net/reference/option/)
+
+```{r cars_dt}
+#| echo: TRUE
+#| code-fold: true
+#| code-summary: "Show the code"
+cars %>% 
+  mutate(cyl = factor(cyl),
+         am = factor(am),
+         vs = factor(vs)
+  ) %>% 
+         DT::datatable(extensions = "Buttons", filter = "top",
+              options = list(    
+                dom = "Bltip",
+                buttons = list(
+                  list(extend = "collection", buttons = c("csv", "excel"), text = "Download"))))
 ```
 
 ## Scatterplot
@@ -208,6 +224,7 @@ cars %>%
 cars %>% 
   plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter", mode = "markers+lines")
 ```
+
 ## It plots in order it sees
 
 ```{r plotly_scat_line2}
@@ -217,30 +234,22 @@ cars %>%
   plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter", mode = "markers+lines")
 ```
 
-## Use Plotly interface directly
-
-Can do very basic things.
+## Plotly can do very basic things.
 
 ```{r easy_plotly}
 plot_ly(x = c(1, 2, 3), y = c(1, 3, 2), type = 'bar') %>% 
   layout(title = 'A Plotly Figure',
-         plot_bgcolor='#e5ecf6', 
-         xaxis = list( 
-           zerolinecolor = '#ffff', 
-           zerolinewidth = 2, 
-           gridcolor = 'ffff'), 
-         yaxis = list( 
-           zerolinecolor = '#ffff', 
-           zerolinewidth = 2, 
-           gridcolor = 'ffff')) 
+         plot_bgcolor='#e5ecf6')
 ```
 
 ## Lot of add\_\* functions
 
+Note how `add_lines` differs from `markers+lines`
+
 ```{r}
 #| message: TRUE
 cars %>% 
-  plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter") %>% 
+  plot_ly(x = ~ hp, y = ~mpg, color = ~ factor(cyl), type = "scatter", mode = "markers") %>% 
   add_lines()
 ```
 
@@ -295,16 +304,16 @@ Lots of different options. Has pros/cons vs. ggplot2.
 subplot(jplot, jplot, nrows = 2, margin = 0.05)
 ```
 
-## Some things don't merge nicely
+## Some things don't subplot nicely
 
 ```{r}
 subplot(jplot, vplot, nrows = 2,  margin = 0.05)
 ```
 
-## Some things don't merge nicely
+## Some things don't subplot nicely
 
 ```{r}
-subplot(jplot, vplot, nrows = 2,  margin = 0.05)
+subplot(jplot, miniplot, nrows = 2,  margin = 0.05)
 ```
 
 # ggiraph - (giraffe)
@@ -461,6 +470,7 @@ n2$show('inline', include_assets = TRUE, cdn = TRUE)
   font-size: 200%  
 }
 ```
+
 ## Remember Basic Figure Tenets
 
 -   Show what you're trying to show, stop making it too much

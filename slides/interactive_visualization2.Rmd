@@ -1,0 +1,122 @@
+---
+title: "Interactive Graphics 2"
+output: 
+  ioslides_presentation:
+    self_contained: true
+    code_folding: "hide"
+    widescreen: true
+editor: visual
+---
+
+```{r cars, include = FALSE}
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(DT)
+library(highcharter)
+cars <- mtcars %>% 
+  rownames_to_column(var = "car") %>% 
+  as_tibble() %>% 
+  separate(car, into = c("make", "blah"), sep = " ", remove = FALSE, extra = "merge") %>% 
+  select(make, car, everything()) %>% 
+  select(-blah)
+```
+
+## DT: Data Tables
+
+https://datatables.net/reference/option/)
+
+```{r cars_dt, echo = TRUE}
+cars %>% mutate(cyl = factor(cyl),
+         am = factor(am),
+         vs = factor(vs)) %>%  
+  DT::datatable(filter = "top", rownames = FALSE)
+```
+
+
+## Highcharter: Click away groups
+
+```{r highscat}
+cars %>% 
+  hchart(
+    "scatter",
+    hcaes(x = hp, y = mpg, group = factor(cyl)))
+```
+
+## Making a quick frequency data set
+
+```{r summary_cars}
+car_count = cars %>% 
+  mutate(producer = ifelse(as.logical(am), "America", "Not America"),
+         cylinders = factor(cyl)) %>%   
+    group_by(producer, cylinders) %>% 
+  summarise(
+    hp = round(mean(hp), 2),
+    n = dplyr::n()) %>% 
+  group_by(producer) %>% 
+  mutate(pct = n/sum(n)) %>% 
+  ungroup()
+```
+
+## Highcharter
+
+```{r highbar}
+car_count %>% 
+  hchart(
+    "bar",
+    hcaes(y = hp, x = producer, group = cylinders)
+  )
+```
+
+## Highcharter Tile Map
+
+```{r}
+#| echo: FALSE
+data(vaccines)
+
+fntltp <- JS("function(){
+  return this.point.x + ' ' +  this.series.yAxis.categories[this.point.y] + ': ' +
+  Highcharts.numberFormat(this.point.value, 2);
+}")
+
+res = hchart(
+  vaccines, 
+  "heatmap", 
+  hcaes(
+    x = year,
+    y = state, 
+    value = count, 
+    tooltip = state,
+    )
+  ) |>
+  hc_colorAxis(
+    stops = color_stops(10, viridisLite::inferno(10, direction = -1)),
+    type = "logarithmic"
+  ) |>
+  hc_yAxis(
+    title = list(text = ""),
+    reversed = TRUE, 
+    offset = -20,
+    tickLength = 0,
+    gridLineWidth = 0, 
+    minorGridLineWidth = 0,
+    labels = list(style = list(fontSize = "9px"))
+  ) |>
+  hc_tooltip(
+    formatter = fntltp
+    ) |>
+  hc_title(
+    text = "Infectious Diseases and Vaccines"
+    ) |>
+  hc_subtitle(
+    text = "Number of cases per 100,000 people"
+  ) |> 
+  hc_legend(
+    layout = "horizontal",
+    verticalAlign = "top",
+    align = "left",
+    valueDecimals = 0
+  ) |>
+  hc_size(height = 900)
+res
+```
