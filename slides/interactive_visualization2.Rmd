@@ -8,6 +8,13 @@ output:
 editor: visual
 ---
 
+```{css, echo=FALSE}
+slides > slide {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+```
+
 ```{r cars, include = FALSE}
 library(tibble)
 library(dplyr)
@@ -62,16 +69,12 @@ car_count = cars %>%
 
 ```{r highbar}
 car_count %>% 
-  hchart(
-    "bar",
-    hcaes(y = hp, x = producer, group = cylinders)
-  )
+  hchart("bar", hcaes(y = hp, x = producer, group = cylinders))
 ```
 
 ## Highcharter Tile Map
 
-```{r}
-#| echo: FALSE
+```{r vax_map, echo = FALSE}
 data(vaccines)
 
 fntltp <- JS("function(){
@@ -119,4 +122,10 @@ res = hchart(
   ) |>
   hc_size(height = 900)
 res
+```
+
+## Highcharter Tile Map  Code
+
+```{r vax_map_show, echo = TRUE, eval = FALSE}
+<<vax_map>>
 ```
