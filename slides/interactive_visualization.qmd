@@ -142,7 +142,7 @@ plotly_button_config(ggplotly(p))
 
 In `ggiraph` (giraffe) you cannot transform a `ggplot` object but you have the same syntax, but put an `_interactive` on it.
 
-[![](imgs/interactive_visualization/put_a_bird_on_it.gif){fig-alt="Put a \"Bird on It\" Meme from Portlandia TV show" fig-align="center" width="50%"}](https://www.youtube.com/watch?v=GNpIOlDhigw)
+[![](../imgs/interactive_visualization/put_a_bird_on_it.gif){fig-alt="Put a \"Bird on It\" Meme from Portlandia TV show" fig-align="center" width="50%"}](https://www.youtube.com/watch?v=GNpIOlDhigw)
 
 ## Interactive Points (ggiraph)
 
@@ -203,7 +203,6 @@ cars %>%
     "scatter",
     hcaes(x = hp, y = mpg, group = factor(cyl)))
 ```
-
 
 ## Making a quick frequency data set
 
@@ -288,7 +287,6 @@ res
 Highcharts offers both a commercial license as well as a free non-commercial license
 
 [![](imgs/interactive_visualization/highcharts_pricing.png){fig-alt="Pricing Chart for Highcharts" fig-align="center"}](https://shop.highcharts.com/)
-
 
 ## rCharts: Different Syntax
 
