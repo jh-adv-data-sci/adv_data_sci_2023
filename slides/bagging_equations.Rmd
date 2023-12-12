@@ -1,0 +1,29 @@
+---
+title: "Understanding Bagging and Variance Reduction"
+output: html_document
+---
+
+## Introduction
+
+Bagging (Bootstrap Aggregating) is a powerful ensemble technique in machine learning that helps reduce variance. In this document, we'll explore the mathematical explanation behind how bagging achieves this reduction in variance.
+
+## Mathematical Explanation
+
+Assume we have a dataset \(D\) with \(N\) samples. Bagging involves creating \(B\) bootstrap samples, denoted as \(D_1, D_2, \ldots, D_B\), each of size \(N\) (with replacement). We train a model on each of these bootstrap samples, resulting in \(B\) base models, denoted as \(h_1, h_2, \ldots, h_B\).
+
+The variance of the average of \(B\) base models is given by:
+
+\[ \text{Var}_{\text{avg}} = \frac{1}{B^2} \sum_{i=1}^{B} \sum_{j=1}^{B} \text{Cov}(h_i, h_j) \]
+
+Where $h_i$ and $h_j$ are typically $n$-dimensional prediction vectors for a scalar prediction (e.g. linear, logistic), but may be a $n \times k$ matrix for multi-class predictions (classification with > 2 classes).  The covariance in that case would be a covariance matrix. 
+
+If the base models are independent, the covariance terms \(\text{Cov}(h_i, h_j)\) for \(i \neq j\) become zero, and the variance of the average simplifies to:
+
+\[ \text{Var}_{\text{avg}} = \frac{1}{B} \text{Var}(h_i) \]
+
+This implies that by combining the predictions of multiple models, each with its own variance, we reduce the overall variance of the ensemble. The averaging process smooths out individual model's fluctuations and errors, resulting in a more stable and less variable prediction.
+
+## Conclusion
+
+Bagging is a powerful technique for reducing variance in machine learning models. By leveraging bootstrap sampling and aggregating predictions from multiple base models, bagging creates a more robust and stable ensemble.
+
